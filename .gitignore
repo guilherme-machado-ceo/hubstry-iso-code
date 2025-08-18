@@ -1,0 +1,31 @@
+
+# Rust
+/target
+
+# IDEs
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+log/
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+build/
+dist/
+
+# Other
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env
+
