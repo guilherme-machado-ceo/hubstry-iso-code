@@ -1,291 +1,90 @@
-# Hubstry-ISO_Code Framework
+# Hubstry ISO Code Framework
 
-[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-passing-green.svg)](#testing)
+Hubstry ISO Code is a proof-of-concept framework designed to integrate international compliance, security, quality, and ethical standards directly into the software development workflow. It uses a semantic analysis engine to parse source code, identify special compliance prefixes, and validate the code against a defined set of rules.
 
-Um framework Rust inovador para análise de conformidade de código usando a metodologia **ISO-Code** com prefixos padronizados para diferentes domínios de compliance.
+This approach allows developers to embed compliance requirements directly into their code, enabling automated checks and generating reports to ensure adherence to legal and ethical standards.
 
-## 🎯 Visão Geral
+## Current Capabilities
 
-O Hubstry-ISO_Code é um framework semântico que permite:
+This prototype is focused on a single jurisdiction and a limited set of rules to demonstrate the core functionality.
 
-- **Análise de Conformidade**: Verificação automática de padrões de compliance em código
-- **Prefixos Padronizados**: Sistema de anotações baseado em ISO para diferentes domínios
-- **Engine Semântico**: Análise inteligente com regras customizáveis
-- **Relatórios Detalhados**: Geração de relatórios em múltiplos formatos
-- **Extensibilidade**: Suporte a regras personalizadas e novos padrões
+*   **Language Support:** Rust
+*   **Analysis Target:** Functions in Rust source code.
+*   **Supported Jurisdiction:** **ECA Digital (Estatuto da Criança e do Adolescente - Brazil)**
+*   **Implemented Rules:**
+    *   `ECA.AGE.VERIFY`: Ensures a function annotated for age verification contains a call to an age-checking mechanism.
+    *   `ECA.PARENT.CONSENT`: Ensures a function that collects user data also contains a call to a parental consent mechanism.
+    *   `ECA.LOOTBOX.BLOCK`: Ensures a function implementing loot box mechanics is protected by an age verification check.
 
-## 🏗️ Arquitetura
+## How It Works
 
-### Prefixos ISO-Code Suportados
+The engine works by parsing Rust source files into an Abstract Syntax Tree (AST). It then traverses the AST, looking for functions that have special "doc comments" containing a compliance prefix.
 
-| Prefixo | Domínio | Descrição |
-|---------|---------|----------|
-| **S.O.S** | Security | Segurança e proteção de dados |
-| **G.D.P.R** | Privacy | Conformidade com GDPR |
-| **A.C.C** | Accessibility | Acessibilidade e inclusão |
-| **S.U.S** | Sustainability | Sustentabilidade e eficiência |
-| **D.I.V** | Diversity | Diversidade e linguagem inclusiva |
-
-### Componentes Principais
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     Parser      │───▶│ Semantic Engine │───▶│    Reporter     │
-│   (ISO-Code)    │    │   (Rules &      │    │  (Multi-format) │
-│                 │    │   Analysis)     │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+**Example:**
+```rust
+/// ECA.AGE.VERIFY: This function must check the user's age.
+fn access_feature() {
+    // The engine will check if this function body
+    // contains a call to a function like `check_age()`.
+}
 ```
 
-## 🚀 Instalação
+If a function is annotated with a known prefix, the engine applies the corresponding validation logic to its body. Violations are collected and presented in a final report.
 
-### Pré-requisitos
+## Getting Started
 
-- Rust 1.70 ou superior
-- Cargo (incluído com Rust)
+### Prerequisites
 
-### Compilação do Código Fonte
+*   [Rust programming language and Cargo](https://www.rust-lang.org/tools/install)
+
+### Build
+
+To build the command-line analysis tool, clone the repository and run the following command from the project root:
 
 ```bash
-git clone https://github.com/seu-usuario/hubstry-iso-code.git
-cd hubstry-iso-code
 cargo build --release
 ```
+The executable will be available at `target/release/hubstry_iso_code`.
 
-## 📖 Guia de Uso
+### Usage
 
-### Exemplo Básico
+The primary way to use the tool is via the command-line interface (CLI).
 
-```rust
-use hubstry_iso_code::{
-    SemanticEngine, EngineConfig, Parser,
-    ComplianceStandard, OutputFormat
-};
+1.  **Run Analysis on a File:**
+    Use the `--file` argument to specify the path to the Rust file you want to analyze.
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Código com anotações ISO-Code
-    let source_code = r#"
-        S.O.S function authenticate_user(password: string) {
-            // Função de autenticação segura
-            return validate_credentials(password);
-        }
-        
-        G.D.P.R function process_personal_data(user_data: UserData) {
-            // Processamento conforme GDPR
-            return anonymize_data(user_data);
-        }
-    "#;
-    
-    // Parse do código
-    let mut parser = Parser::new(source_code.to_string());
-    let parse_result = parser.parse();
-    
-    // Configuração do engine
-    let config = EngineConfig {
-        enabled_standards: vec![
-            ComplianceStandard::Security,
-            ComplianceStandard::Privacy,
-        ],
-        strict_mode: false,
-        output_format: OutputFormat::Json,
-    };
-    
-    // Análise semântica
-    let engine = SemanticEngine::new(config);
-    let result = engine.analyze(&parse_result.ast);
-    
-    // Geração de relatório
-    let report = engine.generate_report(&result)?;
-    println!("Compliance Score: {:.1}%", result.compliance_score);
-    println!("Report:\n{}", report);
-    
-    Ok(())
-}
-```
+    ```bash
+    cargo run -- --file <path/to/your/file.rs>
+    ```
 
-### Exemplo com Regras Personalizadas
+2.  **Example with Violations:**
+    An example file with known violations is provided in `examples/simple_violation.rs`. You can run the analyzer on it to see the report generation in action:
 
-```rust
-use hubstry_iso_code::{
-    SemanticEngine, ComplianceRule, ComplianceStandard, RuleSeverity
-};
+    ```bash
+    cargo run -- --file examples/simple_violation.rs
+    ```
 
-fn main() {
-    let mut engine = SemanticEngine::default();
-    
-    // Adicionar regra personalizada
-    let custom_rule = ComplianceRule {
-        id: "CUSTOM_001".to_string(),
-        standard: ComplianceStandard::Security,
-        severity: RuleSeverity::High,
-        description: "Admin functions must have security prefix".to_string(),
-        validation_pattern: Some("function.*admin.*\\{".to_string()),
-        remediation_hint: Some("Add S.O.S prefix to admin functions".to_string()),
-    };
-    
-    engine.add_rule(custom_rule);
-    
-    // Usar engine com regra personalizada...
-}
-```
+    **Expected Output:**
+    ```
+    🔎 Analisando o arquivo: examples/simple_violation.rs
 
-## 🧪 Exemplos Práticos
+    # Hubstry-ISO_Code Compliance Report
 
-### Executar Exemplos
+    **Compliance Score:** 80.0%
 
-```bash
-# Exemplo básico de análise
-cargo run --example basic_analysis
+    ## Violations (2)
 
-# Exemplo avançado com múltiplos padrões
-cargo run --example advanced_compliance
-```
+    - **HIGH** [ECA.PARENT.CONSENT.1]: Function appears to collect user data but lacks a call to a parental consent function.
+      *Suggestion: Ensure that any data collection from minors is preceded by a call to a verifiable parental consent mechanism (e.g., 'get_parental_consent()').*
 
-### Estrutura dos Exemplos
+    - **HIGH** [ECA.AGE.VERIFY.1]: Function is annotated for age verification, but does not appear to call a relevant verification function.
+      *Suggestion: Ensure the function calls a service or helper for age verification (e.g., 'verify_age_with_id()').*
+    ```
 
-- **basic_analysis**: Demonstra análise básica de conformidade
-- **advanced_compliance**: Múltiplos padrões, regras personalizadas e análise em lote
+## Future Development
 
-## 🔧 API Reference
-
-### Core Types
-
-#### `SemanticEngine`
-
-```rust
-impl SemanticEngine {
-    pub fn new(config: EngineConfig) -> Self
-    pub fn default() -> Self
-    pub fn add_rule(&mut self, rule: ComplianceRule)
-    pub fn analyze(&self, ast: &AstNode) -> AnalysisResult
-    pub fn generate_report(&self, result: &AnalysisResult) -> Result<String, String>
-}
-```
-
-#### `Parser`
-
-```rust
-impl Parser {
-    pub fn new(input: String) -> Self
-    pub fn parse(&mut self) -> ParseResult
-}
-```
-
-#### `EngineConfig`
-
-```rust
-pub struct EngineConfig {
-    pub enabled_standards: Vec<ComplianceStandard>,
-    pub strict_mode: bool,
-    pub output_format: OutputFormat,
-}
-```
-
-### Compliance Standards
-
-```rust
-pub enum ComplianceStandard {
-    Security,      // S.O.S
-    Privacy,       // G.D.P.R
-    Accessibility, // A.C.C
-    Sustainability,// S.U.S
-    Diversity,     // D.I.V
-}
-```
-
-### Output Formats
-
-```rust
-pub enum OutputFormat {
-    Json,
-    Yaml,
-    Xml,
-    PlainText,
-    Markdown,
-}
-```
-
-## 🧪 Testing
-
-### Executar Testes
-
-```bash
-# Todos os testes
-cargo test
-
-# Apenas testes unitários
-cargo test --lib
-
-# Apenas testes de integração
-cargo test --test integration_tests
-
-# Testes com output detalhado
-cargo test -- --nocapture
-```
-
-### Cobertura de Testes
-
-- ✅ Testes unitários para todos os módulos principais
-- ✅ Testes de integração para workflows completos
-- ✅ Testes de performance para grandes bases de código
-- ✅ Testes de tratamento de erros
-
-## 📊 Métricas de Compliance
-
-### Score de Conformidade
-
-O framework calcula um score de 0-100% baseado em:
-
-- **Violações Críticas**: -20 pontos cada
-- **Violações Altas**: -10 pontos cada
-- **Violações Médias**: -5 pontos cada
-- **Violações Baixas**: -2 pontos cada
-- **Cobertura de Anotações**: +pontos por cobertura adequada
-
-### Relatórios
-
-Os relatórios incluem:
-
-- Score geral de conformidade
-- Detalhamento por padrão (S.O.S, G.D.P.R, etc.)
-- Lista de violações com sugestões
-- Métricas de cobertura
-- Recomendações de melhoria
-
-## 🤝 Contribuição
-
-### Como Contribuir
-
-1. Fork o repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
-### Diretrizes
-
-- Mantenha o código bem documentado
-- Adicione testes para novas funcionalidades
-- Siga as convenções de código Rust
-- Atualize a documentação quando necessário
-
-## 📄 Licença
-
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
-
-## 📈 Roadmap
-
-- [ ] Suporte a mais linguagens de programação
-- [ ] Interface web para análise online
-- [ ] Integração com IDEs populares
-- [ ] Plugin para CI/CD pipelines
-- [ ] Dashboard de métricas em tempo real
-- [ ] Suporte a padrões de compliance adicionais
-
----
-
-**Desenvolvido com ❤️ em Rust**
-
-
-
+This prototype serves as the foundation for a more comprehensive compliance framework. Future work could include:
+*   Implementing the remaining jurisdictions (LGPD, GDPR, etc.).
+*   Adding support for more programming languages.
+*   Building adapters for popular frameworks (React, Django, Unity).
+*   Developing a web-based dashboard for viewing reports.

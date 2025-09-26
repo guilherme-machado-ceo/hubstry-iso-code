@@ -1,0 +1,19 @@
+# Definição dos prefixos semânticos de conformidade por jurisdição.
+
+jurisdictions:
+  ECA:
+    - prefix: "ECA.AGE.VERIFY"
+      description: "Verificação de idade para acesso a conteúdo restrito."
+      standard: "Eca" # Este campo deve corresponder a um enum `ComplianceStandard`
+    - prefix: "ECA.PARENT.CONSENT"
+      description: "Mecanismo para obter consentimento parental para tratamento de dados de menores."
+      standard: "Eca"
+    - prefix: "ECA.LOOTBOX.BLOCK"
+      description: "Bloqueio ou restrição de mecânicas de loot box para menores."
+      standard: "Eca"
+    - prefix: "ECA.DATA.MINIMIZE"
+      description: "Minimização da coleta de dados de crianças e adolescentes."
+      standard: "Eca"
+    - prefix: "ECA.REPORT.CHANNEL"
+      description: "Canal de denúncias de fácil acesso para conteúdo ilegal ou prejudicial."
+      standard: "Eca"
