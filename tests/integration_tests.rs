@@ -212,6 +212,7 @@ fn test_report_generation() {
     let test_node = AstNode {
         node_type: NodeType::Function,
         content: "function testFunction() { return true; }".to_string(),
+        raw_body: None,
         children: Vec::new(),
         compliance_context: Vec::new(),
         metadata: HashMap::new(),
@@ -335,4 +336,307 @@ fn test_large_codebase_performance() {
     assert!(duration.as_secs() < 1, "Analysis should complete quickly");
     assert!(result.compliance_score >= 0.0);
     assert!(result.compliance_score <= 100.0);
+}
+
+#[test]
+fn test_semantic_context_validation() {
+    // Test for contextual validation of compliance prefixes
+    let source_code_with_misuse = r#"
+        // S.O.S: This function just calculates a sum
+        function calculateSum(a, b) {
+            // No security-related operations here.
+            return a + b;
+        }
+    "#;
+
+    let source_code_correct_use = r#"
+        // S.O.S: This function handles user authentication
+        function handleLogin(username, password) {
+            return authenticate(username, password);
+        }
+    "#;
+
+    let config = EngineConfig {
+        enabled_standards: vec![ComplianceStandard::Security],
+        strict_mode: true,
+        output_format: OutputFormat::Json,
+        custom_rules: Vec::new(),
+    };
+    let engine = SemanticEngine::new(config.clone());
+
+    // --- Test Case 1: Misuse of the S.O.S prefix ---
+    let mut parser_misuse = Parser::new(source_code_with_misuse.to_string());
+    let ast_misuse = parser_misuse.parse().ast;
+    let result_misuse = engine.analyze(&ast_misuse);
+
+    // Should detect the misuse of the S.O.S prefix
+    let has_context_violation = result_misuse.violations.iter()
+        .any(|v| v.rule_id == "SOS_CONTEXT_001");
+    assert!(has_context_violation, "Should detect misuse of S.O.S prefix on a non-security related function");
+
+    // --- Test Case 2: Correct use of the S.O.S prefix ---
+    let mut parser_correct = Parser::new(source_code_correct_use.to_string());
+    let ast_correct = parser_correct.parse().ast;
+    let result_correct = engine.analyze(&ast_correct);
+
+    // Should NOT detect a misuse violation here
+    let has_context_violation_correct = result_correct.violations.iter()
+        .any(|v| v.rule_id == "SOS_CONTEXT_001");
+    assert!(!has_context_violation_correct, "Should not detect misuse of S.O.S prefix on a relevant security function");
+}
+
+#[test]
+fn test_painel_compliance_validation() {
+    // Scenario 1: Violation - Panel without essential features.
+    let code_missing_features = r#"
+        // P.A.I.N.E.L: Basic parental panel
+        function setupParentalControl() {
+            // Just enables the panel, but implements no rules.
+            enable_control = true;
+        }
+    "#;
+
+    // Scenario 2: Violation - Insecure deactivation.
+    let code_insecure_deactivation = r#"
+        // P.A.I.N.E.L: Panel with insecure deactivation
+        function manageParentalControl(action) {
+            // Implements blocking, but allows deactivation without a challenge.
+            block_content("unsuitable");
+            if (action == "disable") {
+                enable_control = false;
+            }
+        }
+    "#;
+
+    // Scenario 3: Correct Implementation.
+    let code_correct_implementation = r#"
+        // P.A.I.N.E.L: Robust parental panel
+        function robustParentalControl(action, password) {
+            // Implements blocking and time limits.
+            block_content("unsuitable"); // Changed from "inappropriate"
+            set_time_limit("2h");
+
+            // Deactivation requires a password.
+            if (action == "disable" && check_password(password)) {
+                enable_control = false;
+            }
+        }
+    "#;
+
+    let config = EngineConfig {
+        enabled_standards: vec![ComplianceStandard::Painel],
+        strict_mode: true,
+        output_format: OutputFormat::Json,
+        custom_rules: Vec::new(),
+    };
+    let engine = SemanticEngine::new(config);
+
+    // Teste para Cenário 1
+    let mut parser1 = Parser::new(code_missing_features.to_string());
+    let result1 = engine.analyze(&parser1.parse().ast);
+    assert!(
+        result1.violations.iter().any(|v| v.rule_id == "PAINEL_001"),
+        "Should detect the lack of essential features in the parental control panel."
+    );
+
+    // Test for Scenario 2
+    let mut parser2 = Parser::new(code_insecure_deactivation.to_string());
+    let result2 = engine.analyze(&parser2.parse().ast);
+    assert!(
+        result2.violations.iter().any(|v| v.rule_id == "PAINEL_002"),
+        "Should detect insecure deactivation of the parental control panel."
+    );
+
+    // Test for Scenario 3
+    let mut parser3 = Parser::new(code_correct_implementation.to_string());
+    let result3 = engine.analyze(&parser3.parse().ast);
+    assert!(
+        result3.violations.is_empty(),
+        "Should not find violations in a correct implementation of the parental control panel."
+    );
+}
+
+#[test]
+fn test_relato_compliance_validation() {
+    // Scenario 1: Violation - Report function lacks public context.
+    let code_lacking_context = r#"
+        // R.E.L.A.T.O: Generate user activity data
+        function generateActivityReport() {
+            // This function generates data, but doesn't mention its audience or frequency.
+            return query_database("user_activity");
+        }
+    "#;
+
+    // Scenario 2: Correct Implementation.
+    let code_correct_implementation = r#"
+        // R.E.L.A.T.O: Generate the biannual public transparency report.
+        function generatePublicBiannualReport() {
+            // The function's purpose is clear from its name and comments.
+            let data = query_database("all_data");
+            return make_public_report(data);
+        }
+    "#;
+
+    let config = EngineConfig {
+        enabled_standards: vec![ComplianceStandard::Relato],
+        strict_mode: true,
+        output_format: OutputFormat::Json,
+        custom_rules: Vec::new(),
+    };
+    let engine = SemanticEngine::new(config);
+
+    // Test for Scenario 1
+    let mut parser1 = Parser::new(code_lacking_context.to_string());
+    let result1 = engine.analyze(&parser1.parse().ast);
+    assert!(
+        result1.violations.iter().any(|v| v.rule_id == "RELATO_001"),
+        "Should detect that the report function lacks public or periodic context."
+    );
+
+    // Test for Scenario 2
+    let mut parser2 = Parser::new(code_correct_implementation.to_string());
+    let result2 = engine.analyze(&parser2.parse().ast);
+    assert!(
+        result2.violations.is_empty(),
+        "Should not find violations in a correctly described report function."
+    );
+}
+
+#[test]
+fn test_algorithm_compliance_validation() {
+    // Scenario 1: Violation - Algorithm lacks transparency context.
+    let code_lacking_context = r#"
+        // A.L.G.O.R.I.T.H.M: User scoring algorithm
+        function scoreUser(user) {
+            // This algorithm assigns a score, but lacks any notes on its ethical implications.
+            return user.posts * 10 + user.likes * 2;
+        }
+    "#;
+
+    // Scenario 2: Correct Implementation.
+    let code_correct_implementation = r#"
+        // A.L.G.O.R.I.T.H.M: User scoring algorithm with fairness considerations
+        function scoreUserWithAudit(user) {
+            // This algorithm is subject to regular fairness and bias audit.
+            // For details, see document XYZ.
+            return user.posts * 10 + user.likes * 2;
+        }
+    "#;
+
+    let config = EngineConfig {
+        enabled_standards: vec![ComplianceStandard::Algorithm],
+        strict_mode: true,
+        output_format: OutputFormat::Json,
+        custom_rules: Vec::new(),
+    };
+    let engine = SemanticEngine::new(config);
+
+    // Test for Scenario 1
+    let mut parser1 = Parser::new(code_lacking_context.to_string());
+    let result1 = engine.analyze(&parser1.parse().ast);
+    assert!(
+        result1.violations.iter().any(|v| v.rule_id == "ALGORITHM_001"),
+        "Should detect that the algorithm function lacks fairness or audit context."
+    );
+
+    // Test for Scenario 2
+    let mut parser2 = Parser::new(code_correct_implementation.to_string());
+    let result2 = engine.analyze(&parser2.parse().ast);
+    assert!(
+        result2.violations.is_empty(),
+        "Should not find violations in a correctly described algorithm function."
+    );
+}
+
+#[test]
+fn test_lootbox_compliance_validation() {
+    // Scenario 1: Violation - Loot box without disclosed odds.
+    let code_without_odds = r#"
+        // L.O.O.T.B.O.X: Random reward crate
+        function openRewardCrate() {
+            // This function gives a random item, but doesn't state the chances.
+            let item = get_random_item_from_pool();
+            return item;
+        }
+    "#;
+
+    // Scenario 2: Correct Implementation.
+    let code_with_odds = r#"
+        // L.O.O.T.B.O.X: Random reward crate with disclosed odds
+        function openRewardCrateWithDisclosure() {
+            // By calling a function with 'odds' in the name, we signal compliance.
+            display_odds_to_user();
+            let item = get_random_item_from_pool();
+            return item;
+        }
+    "#;
+
+    let config = EngineConfig {
+        enabled_standards: vec![ComplianceStandard::Lootbox],
+        strict_mode: true,
+        output_format: OutputFormat::Json,
+        custom_rules: Vec::new(),
+    };
+    let engine = SemanticEngine::new(config);
+
+    // Test for Scenario 1
+    let mut parser1 = Parser::new(code_without_odds.to_string());
+    let result1 = engine.analyze(&parser1.parse().ast);
+    assert!(
+        result1.violations.iter().any(|v| v.rule_id == "LOOTBOX_001"),
+        "Should detect that the loot box mechanic does not disclose probabilities."
+    );
+
+    // Test for Scenario 2
+    let mut parser2 = Parser::new(code_with_odds.to_string());
+    let result2 = engine.analyze(&parser2.parse().ast);
+    assert!(
+        result2.violations.is_empty(),
+        "Should not find violations when loot box odds are disclosed."
+    );
+}
+
+#[test]
+fn test_sdkscan_compliance_validation() {
+    // Scenario 1: Violation - External SDK usage without a security note.
+    let code_without_review = r#"
+        // S.D.K.S.C.A.N: Using the third-party analytics SDK
+        function trackUserEvent(event) {
+            ThirdParty.Analytics.track(event);
+        }
+    "#;
+
+    // Scenario 2: Correct Implementation.
+    let code_with_review = r#"
+        // S.D.K.S.C.A.N: Using the third-party analytics SDK
+        function trackUserEvent(event) {
+            // This SDK has been vetted for security and privacy compliance.
+            // Report available at internal-docs/sdk-review-analytics-v2.pdf
+            ThirdParty.Analytics.track(event);
+        }
+    "#;
+
+    let config = EngineConfig {
+        enabled_standards: vec![ComplianceStandard::SdkScan],
+        strict_mode: true,
+        output_format: OutputFormat::Json,
+        custom_rules: Vec::new(),
+    };
+    let engine = SemanticEngine::new(config);
+
+    // Test for Scenario 1
+    let mut parser1 = Parser::new(code_without_review.to_string());
+    let result1 = engine.analyze(&parser1.parse().ast);
+    assert!(
+        result1.violations.iter().any(|v| v.rule_id == "SDKSCAN_001"),
+        "Should detect that the external SDK usage lacks a security review note."
+    );
+
+    // Test for Scenario 2
+    let mut parser2 = Parser::new(code_with_review.to_string());
+    let result2 = engine.analyze(&parser2.parse().ast);
+    assert!(
+        result2.violations.is_empty(),
+        "Should not find violations when an SDK usage note is present."
+    );
 }

@@ -116,6 +116,65 @@ impl SemanticEngine {
             validation_pattern: Some("(master|slave|blacklist|whitelist)".to_string()),
             remediation_hint: Some("Use inclusive alternatives: main/primary, allow/deny list".to_string()),
         });
+
+        // --- New Rules for Parental Control Panel (P.A.I.N.E.L) ---
+        self.add_rule(ComplianceRule {
+            id: "PAINEL_001".to_string(),
+            standard: ComplianceStandard::Painel,
+            severity: RuleSeverity::High,
+            description: "Parental control panel must implement essential features like content blocking, time limits, or activity reports.".to_string(),
+            validation_pattern: None, // Custom logic, not a simple pattern.
+            remediation_hint: Some("Ensure the function includes logic to 'block', 'limit', 'filter', or 'report'.".to_string()),
+        });
+
+        self.add_rule(ComplianceRule {
+            id: "PAINEL_002".to_string(),
+            standard: ComplianceStandard::Painel,
+            severity: RuleSeverity::Medium,
+            description: "Disabling parental controls must require authentication.".to_string(),
+            validation_pattern: None, // Custom logic
+            remediation_hint: Some("If the function allows deactivation, ensure it requires a password, PIN, or other form of authentication.".to_string()),
+        });
+
+        // --- New Rules for Public Reports (R.E.L.A.T.O) ---
+        self.add_rule(ComplianceRule {
+            id: "RELATO_001".to_string(),
+            standard: ComplianceStandard::Relato,
+            severity: RuleSeverity::High,
+            description: "The report generation function must explicitly mention its public and periodic nature.".to_string(),
+            validation_pattern: None, // Custom logic
+            remediation_hint: Some("Ensure the function's scope includes keywords like 'public', 'transparency', 'semester', or 'biannual'.".to_string()),
+        });
+
+        // --- New Rules for Algorithm Auditing (A.L.G.O.R.I.T.H.M) ---
+        self.add_rule(ComplianceRule {
+            id: "ALGORITHM_001".to_string(),
+            standard: ComplianceStandard::Algorithm,
+            severity: RuleSeverity::High,
+            description: "Code related to algorithmic decision-making must include considerations for fairness, bias, and transparency.".to_string(),
+            validation_pattern: None, // Custom logic
+            remediation_hint: Some("Ensure the function's scope includes keywords like 'fairness', 'bias', 'explainability', or 'audit'.".to_string()),
+        });
+
+        // --- New Rules for Loot Box Mechanics (L.O.O.T.B.O.X) ---
+        self.add_rule(ComplianceRule {
+            id: "LOOTBOX_001".to_string(),
+            standard: ComplianceStandard::Lootbox,
+            severity: RuleSeverity::High,
+            description: "Loot box mechanics must disclose the probabilities of winning each item.".to_string(),
+            validation_pattern: None, // Custom logic
+            remediation_hint: Some("If the function implements random rewards, ensure it also includes keywords like 'odds' or 'probabilities' to indicate disclosure.".to_string()),
+        });
+
+        // --- New Rules for SDK and API Scanning (S.D.K.S.C.A.N) ---
+        self.add_rule(ComplianceRule {
+            id: "SDKSCAN_001".to_string(),
+            standard: ComplianceStandard::SdkScan,
+            severity: RuleSeverity::Medium,
+            description: "The use of external SDKs or APIs must be accompanied by a security review note.".to_string(),
+            validation_pattern: None, // Custom logic
+            remediation_hint: Some("Ensure the function's scope includes keywords like 'audited', 'security review', or 'privacy vetted'.".to_string()),
+        });
     }
 
     /// Adds a compliance rule to the engine
@@ -181,7 +240,7 @@ impl SemanticEngine {
         }
     }
 
-    /// Validates existing compliance context
+    /// Validates existing compliance context using the new granular AST.
     fn validate_compliance_context(
         &self,
         node: &AstNode,
@@ -189,30 +248,41 @@ impl SemanticEngine {
         suggestions: &mut Vec<String>,
     ) {
         for context in &node.compliance_context {
-            // Check if the standard is enabled
             if !self.config.enabled_standards.contains(&context.standard) {
                 suggestions.push(format!(
                     "Compliance standard {} is not enabled in configuration",
                     context.standard
                 ));
+                continue;
             }
 
-            // Validate context parameters
-            if context.rules.is_empty() && context.parameters.is_empty() {
-                violations.push(ComplianceViolation {
-                    rule_id: "CONTEXT_001".to_string(),
-                    severity: RuleSeverity::Low,
-                    message: format!(
-                        "Compliance context {} lacks specific rules or parameters",
-                        context.prefix
-                    ),
-                    line: None,
-                    column: None,
-                    suggestion: Some("Add specific compliance rules or parameters".to_string()),
-                });
+            // --- Validation Dispatcher ---
+            // This now acts as a router, calling the appropriate validation module.
+            match context.standard {
+                ComplianceStandard::Painel => {
+                    violations.extend(crate::painel::validate(node));
+                }
+                ComplianceStandard::Security => {
+                    violations.extend(crate::sos::validate(node));
+                }
+                ComplianceStandard::Relato => {
+                    violations.extend(crate::relato::validate(node));
+                }
+                ComplianceStandard::Algorithm => {
+                    violations.extend(crate::algorithm::validate(node));
+                }
+                ComplianceStandard::Lootbox => {
+                    violations.extend(crate::lootbox::validate(node));
+                }
+                ComplianceStandard::SdkScan => {
+                    violations.extend(crate::sdkscan::validate(node));
+                }
+                _ => {}
             }
+
         }
     }
+
 
     /// Checks for missing compliance context where it should be present
     fn check_missing_compliance(

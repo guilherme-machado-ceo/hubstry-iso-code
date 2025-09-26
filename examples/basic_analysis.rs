@@ -17,6 +17,7 @@ fn main() {
     let password_function = AstNode {
         node_type: NodeType::Function,
         content: "function validatePassword(password) { return password.length > 8; }".to_string(),
+        raw_body: Some("{ return password.length > 8; }".to_string()),
         children: vec![],
         compliance_context: vec![
             // Properly annotated with S.O.S (Security) compliance
@@ -39,6 +40,7 @@ fn main() {
     let user_data_function = AstNode {
         node_type: NodeType::Function,
         content: "function storeUserEmail(email) { database.save(email); }".to_string(),
+        raw_body: Some("{ database.save(email); }".to_string()),
         children: vec![],
         compliance_context: vec![], // Missing G.D.P.R annotation!
         metadata: HashMap::new(),
@@ -48,6 +50,7 @@ fn main() {
     let root_ast = AstNode {
         node_type: NodeType::Module,
         content: "User authentication module".to_string(),
+        raw_body: None,
         children: vec![password_function, user_data_function],
         compliance_context: vec![],
         metadata: HashMap::new(),
@@ -134,6 +137,7 @@ mod tests {
         let test_node = AstNode {
             node_type: NodeType::Function,
             content: "test function".to_string(),
+            raw_body: None,
             children: vec![],
             compliance_context: vec![],
             metadata: HashMap::new(),
