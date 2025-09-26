@@ -27,6 +27,7 @@ fn demo_multiple_standards() {
     let secure_function = AstNode {
         node_type: NodeType::Function,
         content: "// S.O.S: Secure authentication\nfunction authenticate(user, pass) { return validateCredentials(user, pass); }".to_string(),
+        raw_body: None,
         children: Vec::new(),
         compliance_context: vec![ComplianceContext {
             prefix: "S.O.S".to_string(),
@@ -68,6 +69,7 @@ fn demo_custom_rules() {
     let test_function = AstNode {
         node_type: NodeType::Function,
         content: "function adminFunction() { return true; }".to_string(),
+        raw_body: None,
         children: Vec::new(),
         compliance_context: Vec::new(),
         metadata: HashMap::new(),
@@ -107,6 +109,7 @@ fn demo_batch_analysis() {
         AstNode {
             node_type: NodeType::Function,
             content: "function secureLogin() { /* secure implementation */ }".to_string(),
+            raw_body: None,
             children: Vec::new(),
             compliance_context: vec![ComplianceContext {
                 prefix: "S.O.S".to_string(),
@@ -119,6 +122,7 @@ fn demo_batch_analysis() {
         AstNode {
             node_type: NodeType::Function,
             content: "function unsafeFunction() { return password; }".to_string(),
+            raw_body: None,
             children: Vec::new(),
             compliance_context: Vec::new(),
             metadata: HashMap::new(),

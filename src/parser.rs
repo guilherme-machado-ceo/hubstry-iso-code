@@ -30,6 +30,7 @@ pub enum Token {
     Comma,
     Dot,
     Colon,
+    Equals,
     // Keywords
     Function,
     Let,
@@ -70,6 +71,15 @@ impl Lexer {
             self.current_char = self.input.chars().nth(self.position);
         }
         self.position += 1;
+    }
+
+    /// Peeks at the next character without consuming it
+    fn peek_char(&self) -> Option<char> {
+        if self.position >= self.input.len() {
+            None
+        } else {
+            self.input.chars().nth(self.position)
+        }
     }
 
 
@@ -129,12 +139,56 @@ impl Lexer {
             .unwrap_or(0.0)
     }
 
+    /// Reads the content of a comment line until a newline
+    fn read_comment(&mut self) -> String {
+        let start_pos = self.position;
+        while let Some(ch) = self.current_char {
+            if ch == '\n' {
+                break;
+            }
+            self.read_char();
+        }
+        self.input[start_pos..self.position - 1].trim().to_string()
+    }
+
+    /// Extracts a compliance prefix (e.g., "S.O.S") from a comment string.
+    fn extract_prefix_from_comment(&self, comment: &str) -> Option<String> {
+        let parts: Vec<&str> = comment.split(':').collect();
+        if parts.len() > 1 {
+            let potential_prefix = parts[0].trim();
+            if self.is_compliance_prefix(potential_prefix) {
+                return Some(potential_prefix.to_string());
+            }
+        }
+        None
+    }
+
     /// Gets the next token from the input
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
         match self.current_char {
             None => Token::Eof,
+            Some('/') => {
+                if self.peek_char() == Some('/') {
+                    // This is a comment, so we process it.
+                    self.read_char(); // Consume the first '/'
+                    self.read_char(); // Consume the second '/'
+                    let comment_content = self.read_comment();
+
+                    // Check if the comment contains a compliance prefix.
+                    if let Some(prefix) = self.extract_prefix_from_comment(&comment_content) {
+                        return Token::CompliancePrefix(prefix);
+                    } else {
+                        // It's a regular comment, so we ignore it and get the next real token.
+                        return self.next_token();
+                    }
+                } else {
+                    // It's something else, maybe division in the future. For now, invalid.
+                    self.read_char();
+                    Token::Invalid("/".to_string())
+                }
+            }
             Some('\n') => {
                 self.read_char();
                 Token::Newline
@@ -171,23 +225,22 @@ impl Lexer {
                 self.read_char();
                 Token::Colon
             }
+            Some('=') => {
+                self.read_char();
+                Token::Equals
+            }
             Some('"') => Token::String(self.read_string()),
             Some(ch) if ch.is_alphabetic() || ch == '_' => {
                 let identifier = self.read_identifier();
                 
-                // Check if it's a compliance prefix
-                if self.is_compliance_prefix(&identifier) {
-                    Token::CompliancePrefix(identifier)
-                } else {
-                    // Check if it's a keyword
-                    match identifier.as_str() {
-                        "function" | "fn" => Token::Function,
-                        "let" => Token::Let,
-                        "if" => Token::If,
-                        "else" => Token::Else,
-                        "return" => Token::Return,
-                        _ => Token::Identifier(identifier),
-                    }
+                // Check if it's a keyword
+                match identifier.as_str() {
+                    "function" | "fn" => Token::Function,
+                    "let" => Token::Let,
+                    "if" => Token::If,
+                    "else" => Token::Else,
+                    "return" => Token::Return,
+                    _ => Token::Identifier(identifier),
                 }
             }
             Some(ch) if ch.is_numeric() => Token::Number(self.read_number()),
@@ -202,7 +255,17 @@ impl Lexer {
     fn is_compliance_prefix(&self, identifier: &str) -> bool {
         matches!(
             identifier,
-            "S.O.S" | "G.D.P.R" | "Q.M.S" | "A.C.C" | "S.U.S" | "D.I.V"
+            "S.O.S"
+                | "G.D.P.R"
+                | "Q.M.S"
+                | "A.C.C"
+                | "S.U.S"
+                | "D.I.V"
+                | "P.A.I.N.E.L"
+                | "R.E.L.A.T.O"
+                | "A.L.G.O.R.I.T.H.M"
+                | "L.O.O.T.B.O.X"
+                | "S.D.K.S.C.A.N"
         )
     }
 }
@@ -264,6 +327,8 @@ impl Parser {
             Token::CompliancePrefix(prefix) => self.parse_compliance_statement(prefix.clone()),
             Token::Function => self.parse_function(),
             Token::Let => self.parse_variable_declaration(),
+            Token::If => self.parse_if_statement(),
+            Token::Return => self.parse_return_statement(),
             Token::Identifier(_) => self.parse_expression_statement(),
             _ => {
                 let error = format!("Unexpected token: {:?}", self.current_token);
@@ -273,36 +338,43 @@ impl Parser {
         }
     }
 
-    /// Parses a compliance-annotated statement
+    /// Parses a compliance-annotated statement, attaching the context to the statement itself.
     fn parse_compliance_statement(&mut self, prefix: String) -> Result<AstNode, String> {
-        let mut node = AstNode::new(NodeType::ComplianceComment, prefix.clone());
-        
-        // Add compliance context
-        if let Some(context) = ComplianceContext::from_prefix(&prefix) {
-            node.add_compliance_context(context);
+        // Consume the prefix token.
+        self.next_token();
+
+        // Skip any newlines between the compliance comment and the actual statement.
+        while self.current_token == Token::Newline {
+            self.next_token();
         }
 
-        self.next_token(); // consume prefix
-        
-        // Parse the actual statement that follows
-        if self.current_token != Token::Eof {
-            match self.parse_statement() {
-                Ok(stmt) => node.add_child(stmt),
-                Err(e) => return Err(e),
+        // Now, parse the actual statement that is being annotated.
+        match self.parse_statement() {
+            Ok(mut statement_node) => {
+                // Create the compliance context from the prefix.
+                if let Some(context) = ComplianceContext::from_prefix(&prefix) {
+                    // Add the context directly to the parsed statement node.
+                    statement_node.add_compliance_context(context);
+                }
+                // Return the modified statement node, now with compliance context.
+                Ok(statement_node)
             }
+            Err(e) => Err(format!(
+                "Expected a statement after compliance prefix '{}', but found error: {}",
+                prefix, e
+            )),
         }
-
-        Ok(node)
     }
 
     /// Parses a function declaration
     fn parse_function(&mut self) -> Result<AstNode, String> {
-        let mut node = AstNode::new(NodeType::Function, "function".to_string());
+        // The node's content will be the function name.
+        let mut node;
         self.next_token(); // consume 'function'
 
         // Parse function name
         if let Token::Identifier(name) = &self.current_token {
-            node.metadata.insert("name".to_string(), name.clone());
+            node = AstNode::new(NodeType::Function, name.clone());
             self.next_token();
         } else {
             return Err("Expected function name".to_string());
@@ -311,7 +383,6 @@ impl Parser {
         // Parse parameters (simplified)
         if self.current_token == Token::LeftParen {
             self.next_token();
-            // Skip parameter parsing for now
             while self.current_token != Token::RightParen && self.current_token != Token::Eof {
                 self.next_token();
             }
@@ -322,21 +393,105 @@ impl Parser {
 
         // Parse function body
         if self.current_token == Token::LeftBrace {
-            self.next_token();
-            let mut body = AstNode::new(NodeType::Block, "body".to_string());
+            let body_start_pos = self.lexer.position; // Position after '{'
+            self.next_token(); // consume '{'
+
+            let mut body_block = AstNode::new(NodeType::Block, "body".to_string());
             
             while self.current_token != Token::RightBrace && self.current_token != Token::Eof {
+                while self.current_token == Token::Newline {
+                    self.next_token();
+                }
+                if self.current_token == Token::RightBrace { break; }
+
                 match self.parse_statement() {
-                    Ok(stmt) => body.add_child(stmt),
-                    Err(_) => self.next_token(), // Skip invalid statements
+                    Ok(stmt) => body_block.add_child(stmt),
+                    Err(_) => self.next_token(),
                 }
             }
             
+            let body_end_pos = self.lexer.position - 1; // Position of '}'
+
             if self.current_token == Token::RightBrace {
-                self.next_token();
+                self.next_token(); // consume '}'
+            }
+
+            // Capture the raw text of the function body for textual analysis
+            if body_end_pos > body_start_pos {
+                node.raw_body = Some(self.lexer.input[body_start_pos..body_end_pos].to_string());
             }
             
-            node.add_child(body);
+            node.add_child(body_block);
+        }
+
+        Ok(node)
+    }
+
+    /// Parses a return statement
+    fn parse_return_statement(&mut self) -> Result<AstNode, String> {
+        self.next_token(); // consume 'return'
+        let mut node = AstNode::new(NodeType::ReturnStatement, "return".to_string());
+
+        // Parse the expression that is being returned.
+        match self.parse_expression_statement() {
+            Ok(expr_node) => node.add_child(expr_node),
+            Err(e) => return Err(e),
+        }
+
+        // Semicolon is optional after a return statement in some contexts.
+        if self.current_token == Token::Semicolon {
+            self.next_token();
+        }
+
+        Ok(node)
+    }
+
+    /// Parses an if statement
+    fn parse_if_statement(&mut self) -> Result<AstNode, String> {
+        self.next_token(); // consume 'if'
+        let mut node = AstNode::new(NodeType::IfStatement, "if".to_string());
+
+        // Parse condition and look for call expressions inside it
+        if self.current_token == Token::LeftParen {
+            self.next_token(); // consume '('
+            while self.current_token != Token::RightParen && self.current_token != Token::Eof {
+                // If we find an identifier that is part of a function call, parse it.
+                if let Token::Identifier(_) = self.current_token {
+                    if self.peek_token == Token::LeftParen {
+                        if let Ok(call_expr) = self.parse_expression_statement() {
+                            // Add the call expression from the condition as a child of the IfStatement node.
+                            node.add_child(call_expr);
+                            continue; // Continue parsing the rest of the condition
+                        }
+                    }
+                }
+                self.next_token();
+            }
+            if self.current_token == Token::RightParen {
+                self.next_token(); // consume ')'
+            }
+        }
+
+        // Parse 'then' block
+        if self.current_token == Token::LeftBrace {
+            self.next_token(); // consume '{'
+            let mut body_block = AstNode::new(NodeType::Block, "then_block".to_string());
+            while self.current_token != Token::RightBrace && self.current_token != Token::Eof {
+                // Skip any newlines inside the block
+                while self.current_token == Token::Newline {
+                    self.next_token();
+                }
+                if self.current_token == Token::RightBrace { break; }
+
+                match self.parse_statement() {
+                    Ok(stmt) => body_block.add_child(stmt),
+                    Err(_) => self.next_token(),
+                }
+            }
+            if self.current_token == Token::RightBrace {
+                self.next_token(); // consume '}'
+            }
+            node.add_child(body_block);
         }
 
         Ok(node)
@@ -344,12 +499,12 @@ impl Parser {
 
     /// Parses a variable declaration
     fn parse_variable_declaration(&mut self) -> Result<AstNode, String> {
-        let mut node = AstNode::new(NodeType::Variable, "variable".to_string());
         self.next_token(); // consume 'let'
 
-        // Parse variable name
+        // The node's content is the variable name.
+        let node;
         if let Token::Identifier(name) = &self.current_token {
-            node.metadata.insert("name".to_string(), name.clone());
+            node = AstNode::new(NodeType::Variable, name.clone());
             self.next_token();
         } else {
             return Err("Expected variable name".to_string());
@@ -367,19 +522,51 @@ impl Parser {
         Ok(node)
     }
 
-    /// Parses an expression statement
+    /// Parses an expression statement, now with the ability to detect call expressions and assignments.
     fn parse_expression_statement(&mut self) -> Result<AstNode, String> {
+        if let Token::Identifier(name) = self.current_token.clone() {
+            // Check if it's a function call
+            if self.peek_token == Token::LeftParen {
+                self.next_token(); // consume identifier
+                self.next_token(); // consume '('
+
+                let node = AstNode::new(NodeType::CallExpression, name);
+
+                // Skip arguments for now
+                while self.current_token != Token::RightParen && self.current_token != Token::Eof {
+                    self.next_token();
+                }
+                if self.current_token == Token::RightParen {
+                    self.next_token();
+                }
+
+                if self.current_token == Token::Semicolon { self.next_token(); }
+                return Ok(node);
+            }
+            // Check if it's an assignment by looking for the '=' token.
+            else if self.peek_token == Token::Equals {
+                self.next_token(); // consume identifier
+                self.next_token(); // consume '='
+
+                let node = AstNode::new(NodeType::AssignmentExpression, name);
+
+                // Skip the rest of the expression
+                while self.current_token != Token::Semicolon && self.current_token != Token::Newline && self.current_token != Token::Eof {
+                    self.next_token();
+                }
+                if self.current_token == Token::Semicolon { self.next_token(); }
+                return Ok(node);
+            }
+        }
+
+        // Fallback for other expression types (currently just skips them)
         let node = AstNode::new(NodeType::Expression, "expression".to_string());
-        
-        // Skip to next statement for now
         while self.current_token != Token::Semicolon && self.current_token != Token::Newline && self.current_token != Token::Eof {
             self.next_token();
         }
-
         if self.current_token == Token::Semicolon {
             self.next_token();
         }
-
         Ok(node)
     }
 }
@@ -390,8 +577,10 @@ mod tests {
 
     #[test]
     fn test_lexer_compliance_prefix() {
-        let mut lexer = Lexer::new("S.O.S function test() {}".to_string());
+        let mut lexer = Lexer::new("// S.O.S: A security function\nfunction test() {}".to_string());
         assert_eq!(lexer.next_token(), Token::CompliancePrefix("S.O.S".to_string()));
+        // The lexer should now see the newline after processing the comment line
+        assert_eq!(lexer.next_token(), Token::Newline);
         assert_eq!(lexer.next_token(), Token::Function);
     }
 

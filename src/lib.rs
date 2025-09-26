@@ -9,6 +9,18 @@ pub mod parser;
 pub mod semantic_engine;
 pub mod models;
 
+// Novos módulos de compliance legal
+pub mod painel;
+pub mod relato;
+pub mod algorithm;
+pub mod lootbox;
+pub mod sdkscan;
+
+// Módulos de governança e segurança
+pub mod sos;
+pub mod audit;
+pub mod security;
+
 // Example function (will be replaced by actual implementation)
 pub fn process_iso_code(code: &str) -> String {
     format!("Processing ISO Code: {}\n(This is a placeholder function)", code)

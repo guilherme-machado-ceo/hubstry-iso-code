@@ -19,6 +19,17 @@ pub enum ComplianceStandard {
     Sustainability,
     /// Diversity and inclusion standards (D.I.V prefix)
     Diversity,
+    // --- Novos padrões legais ---
+    /// Painel Parental (P.A.I.N.E.L prefix)
+    Painel,
+    /// Relatórios Semestrais (R.E.L.A.T.O prefix)
+    Relato,
+    /// Auditoria de Algoritmos (A.L.G.O.R.I.T.H.M prefix)
+    Algorithm,
+    /// Bloqueio de Loot Boxes (L.O.O.T.B.O.X prefix)
+    Lootbox,
+    /// Scanner de SDKs (S.D.K.S.C.A.N prefix)
+    SdkScan,
     /// Custom standard with name
     Custom(String),
 }
@@ -49,6 +60,7 @@ pub enum RuleSeverity {
 pub struct AstNode {
     pub node_type: NodeType,
     pub content: String,
+    pub raw_body: Option<String>,
     pub compliance_context: Vec<ComplianceContext>,
     pub children: Vec<AstNode>,
     pub metadata: HashMap<String, String>,
@@ -65,10 +77,18 @@ pub enum NodeType {
     Class,
     /// Variable declaration
     Variable,
-    /// Expression
+    /// A function call, like `do_something()`
+    CallExpression,
+    /// An assignment, like `x = y`
+    AssignmentExpression,
+    /// A generic expression (to be refined)
     Expression,
-    /// Statement
+    /// A generic statement (to be refined)
     Statement,
+    /// An 'if' statement
+    IfStatement,
+    /// A 'return' statement
+    ReturnStatement,
     /// Comment with compliance annotation
     ComplianceComment,
     /// Block of code
@@ -142,6 +162,11 @@ impl fmt::Display for ComplianceStandard {
             ComplianceStandard::Accessibility => write!(f, "Accessibility (A.C.C)"),
             ComplianceStandard::Sustainability => write!(f, "Sustainability (S.U.S)"),
             ComplianceStandard::Diversity => write!(f, "Diversity (D.I.V)"),
+            ComplianceStandard::Painel => write!(f, "Painel Parental (P.A.I.N.E.L)"),
+            ComplianceStandard::Relato => write!(f, "Relatórios (R.E.L.A.T.O)"),
+            ComplianceStandard::Algorithm => write!(f, "Algoritmos (A.L.G.O.R.I.T.H.M)"),
+            ComplianceStandard::Lootbox => write!(f, "Loot Boxes (L.O.O.T.B.O.X)"),
+            ComplianceStandard::SdkScan => write!(f, "SDK Scan (S.D.K.S.C.A.N)"),
             ComplianceStandard::Custom(name) => write!(f, "Custom ({})", name),
         }
     }
@@ -181,6 +206,11 @@ impl ComplianceContext {
             "A.C.C" => ComplianceStandard::Accessibility,
             "S.U.S" => ComplianceStandard::Sustainability,
             "D.I.V" => ComplianceStandard::Diversity,
+            "P.A.I.N.E.L" => ComplianceStandard::Painel,
+            "R.E.L.A.T.O" => ComplianceStandard::Relato,
+            "A.L.G.O.R.I.T.H.M" => ComplianceStandard::Algorithm,
+            "L.O.O.T.B.O.X" => ComplianceStandard::Lootbox,
+            "S.D.K.S.C.A.N" => ComplianceStandard::SdkScan,
             _ => return None,
         };
 
@@ -200,6 +230,7 @@ impl AstNode {
         Self {
             node_type,
             content,
+            raw_body: None,
             compliance_context: Vec::new(),
             children: Vec::new(),
             metadata: HashMap::new(),
