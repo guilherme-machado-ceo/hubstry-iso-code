@@ -1,76 +1,69 @@
-// src/rust_engine/main.rs
+// src/main.rs
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
-use chrono::Utc;
-
-// Usar informações do Cargo.toml para preencher os detalhes do projeto.
-const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
-const PROJECT_VERSION: &str = env!("CARGO_PKG_VERSION");
+use hubstry_iso_code::{
+    semantic_engine::SemanticEngine,
+    models::EngineConfig,
+};
 
 /// Hubstry-ISO-Code: Um framework para análise de conformidade de código.
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand, Debug)]
-enum Commands {
-    /// Gera um relatório de Avaliação de Impacto sobre a Proteção de Dados (DPIA) a partir de um template.
-    GenerateDpia {
-        /// O caminho de saída para o relatório DPIA gerado.
-        #[arg(short, long, default_value = "dpia_report.md")]
-        output: PathBuf,
-
-        /// O nome do projeto a ser incluído no relatório.
-        #[arg(long, default_value = PROJECT_NAME)]
-        project_name: String,
-    },
-    /// Analisa um diretório em busca de conformidade (placeholder).
-    Analyze {
-        /// O caminho para o diretório a ser analisado.
-        #[arg(default_value = ".")]
-        path: PathBuf,
-    },
+    /// O caminho para o arquivo Rust a ser analisado.
+    #[arg(short, long)]
+    file: PathBuf,
 }
 
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
 
-    match &cli.command {
-        Commands::GenerateDpia { output, project_name } => {
-            println!("Gerando relatório DPIA...");
+    println!("🔎 Analisando o arquivo: {}", cli.file.display());
 
-            // 1. Ler o arquivo de template.
-            let template_path = "docs/templates/dpia_template.md";
-            let mut template_content = match fs::read_to_string(template_path) {
-                Ok(content) => content,
-                Err(e) => {
-                    eprintln!("Erro: Não foi possível ler o template de DPIA em '{}'. Verifique se o arquivo existe.", template_path);
-                    eprintln!("Detalhes: {}", e);
-                    return Err(e);
-                }
-            };
-
-            // 2. Substituir os placeholders.
-            let current_date = Utc::now().format("%Y-%m-%d").to_string();
-            template_content = template_content.replace("[NOME DO PROJETO]", project_name);
-            template_content = template_content.replace("[DATA DE GERAÇÃO]", &current_date);
-            template_content = template_content.replace("[VERSÃO DO PROJETO]", PROJECT_VERSION);
-
-            // 3. Escrever o novo arquivo de relatório.
-            fs::write(output, template_content)?;
-
-            println!("Relatório DPIA gerado com sucesso em: {}", output.display());
+    // 1. Ler o conteúdo do arquivo
+    let content = match fs::read_to_string(&cli.file) {
+        Ok(content) => content,
+        Err(e) => {
+            eprintln!("Erro: Não foi possível ler o arquivo '{}'.", cli.file.display());
+            eprintln!("Detalhes: {}", e);
+            return Err(e);
         }
-        Commands::Analyze { path } => {
-            // Este é um placeholder para o futuro comando de análise.
-            println!("Analisando o diretório: {} (Esta funcionalidade ainda não foi implementada)", path.display());
+    };
+
+    // 2. Parsear o conteúdo para uma AST `syn`
+    let ast = match syn::parse_file(&content) {
+        Ok(ast) => ast,
+        Err(e) => {
+            eprintln!("Erro: Falha ao parsear o código Rust no arquivo '{}'.", cli.file.display());
+            eprintln!("Certifique-se de que o arquivo contém código Rust válido.");
+            eprintln!("Detalhes do parser: {}", e);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Falha no parsing do código",
+            ));
         }
-    }
+    };
+
+    // 3. Executar o motor semântico
+    let engine = SemanticEngine::new(EngineConfig::default());
+    let results = match engine.analyze(&ast) {
+        Ok(results) => results,
+        Err(e) => {
+            eprintln!("\nErro Crítico: Falha ao inicializar o motor de análise.");
+            eprintln!("Causa: {}", e);
+            eprintln!("Por favor, verifique se o arquivo 'prefixes.yml' existe no diretório raiz e está formatado corretamente.");
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Falha na configuração do motor semântico",
+            ));
+        }
+    };
+
+    // 4. Gerar e imprimir o relatório
+    let report = engine.generate_report(&results);
+    println!("\n{}", report);
 
     Ok(())
 }

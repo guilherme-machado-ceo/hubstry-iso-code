@@ -8,18 +8,12 @@
 pub mod parser;
 pub mod semantic_engine;
 pub mod models;
+pub mod prefix_manager;
 
-// Novos módulos de compliance legal
-pub mod painel;
-pub mod relato;
-pub mod algorithm;
-pub mod lootbox;
-pub mod sdkscan;
+// Módulos de Jurisdição
+pub mod jurisdictions;
 
-// Módulos de governança e segurança
-pub mod sos;
-pub mod audit;
-pub mod security;
+// Módulos de governança e segurança (removidos para focar no escopo atual)
 
 // Example function (will be replaced by actual implementation)
 pub fn process_iso_code(code: &str) -> String {
