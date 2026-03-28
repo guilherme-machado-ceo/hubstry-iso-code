@@ -1,0 +1,362 @@
+jurisdiction: ECA_Digital
+law_reference: "Lei 15.211/2025"
+decree_reference: "Decreto 12.880/2026"
+enforcement_body: "ANPD"
+effective_date: "2026-03-17"
+max_penalty: "10% do faturamento do grupo econômico"
+
+categories:
+  - id: ECA.AGE
+    name: "Verificação de Idade"
+    rules:
+      - id: ECA.AGE.VERIFY
+        severity: CRITICAL
+        law_article: "Art. 12"
+        business_description: >
+          O ECA Digital proíbe a simples autodeclaração de idade.
+          A aplicação deve implementar mecanismos confiáveis de verificação.
+        technical_description: >
+          Funções anotadas para verificação de idade devem conter
+          chamadas a APIs de verificação (Serpro DataValid, Gov.br)
+          ou mecanismos equivalentes auditáveis.
+        detection:
+          code_patterns:
+            function_annotations:
+              - "ECA.AGE.VERIFY"
+              - "@compliance:age-verify"
+              - "@EcaCompliance('AGE.VERIFY')"
+            required_calls:
+              - pattern: "check_age|verify_age|validate_age|serpro.*verify|datavalid|gov_br.*age"
+                description: "Chamada a serviço de verificação de idade"
+            forbidden_patterns:
+              - pattern: "self_declared_age|age_checkbox|confirm_18|is_adult.*checkbox"
+                description: "Autodeclaração de idade (proibida)"
+                severity: CRITICAL
+          web_patterns:
+            forbidden_elements:
+              - selector: "input[type='checkbox'][name*='age'], input[type='checkbox'][name*='idade']"
+                description: "Checkbox de autodeclaração"
+              - selector: "button:contains('Tenho 18'), button:contains('Sou maior')"
+                description: "Botão de autodeclaração"
+            required_elements:
+              - selector: "[data-age-verification], .age-gate, #age-verification"
+                description: "Componente de verificação de idade estruturado"
+        remediation:
+          business: >
+            Implemente verificação de idade via API oficial (Serpro DataValid
+            ou Gov.br). A autodeclaração não é aceita pela ANPD.
+          technical: >
+            Integre com a API Serpro DataValid (https://servicos.serpro.gov.br/datavalid/)
+            ou SDK Gov.br. Exemplo: `const result = await datavalid.verifyAge(cpf);`
+
+      - id: ECA.AGE.SELF_DECLARATION_BAN
+        severity: CRITICAL
+        law_article: "Art. 12, §1º"
+        business_description: >
+          A lei veda expressamente a autodeclaração como mecanismo
+          único de verificação de idade para conteúdo impróprio.
+        technical_description: >
+          Qualquer formulário que dependa exclusivamente de input do usuário
+          para determinar idade (checkbox, dropdown de nascimento, campo texto)
+          sem validação backend é uma violação.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "age\\s*[>=<]+\\s*18.*self|user_input.*age|form.*birth.*year"
+                description: "Verificação baseada apenas em input do usuário"
+              - pattern: "min_age.*input|born_before.*form|dob_field"
+                description: "Campo de data de nascimento sem validação backend"
+          web_patterns:
+            forbidden_elements:
+              - selector: "select[name*='birth'], input[name*='birthdate'], input[type='date'][name*='age']"
+                context: "Quando é o único mecanismo (sem chamada a API backend)"
+        remediation:
+          business: "Substitua a autodeclaração por verificação via documento ou API governamental."
+          technical: "Remova campos de autodeclaração. Implemente fluxo de verificação server-side."
+
+      - id: ECA.AGE.ZKP_INTEGRATION
+        severity: HIGH
+        law_article: "Art. 13"
+        business_description: >
+          Detecção do uso de provedores confiáveis Zero Knowledge Proof (Google ZKP, Gov.br, Apple)
+          garantindo anonimização dos dados de identificação durante o Age Gate.
+        technical_description: >
+          Procura por assinaturas oficiais de SDKs e endpoints de ZKP em implementações de frontend
+          e validadores no backend.
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "zkp.*verify|google.*identity|gov.*br.*oauth|apple.*signin.*age"
+                description: "Uso de autenticador validado via ZKP"
+          web_patterns:
+            required_elements:
+              - selector: "script[src*='accounts.google.com'], script[src*='identity.googleapis'], script[src*='gov.br/auth']"
+                description: "Inclusão de scripts de autenticação ZKP ou governamental."
+        remediation:
+          business: "Incorpore provedores governamentais ou Zero Knowledge Proofs confiáveis para a checagem de idade."
+          technical: "Utilize bibliotecas oAuth Gov.br ou Identity ZKP do Google/Apple para validações cross-platform anônimas."
+
+  - id: ECA.DATA
+    name: "Proteção de Dados de Menores"
+    rules:
+      - id: ECA.DATA.RETENTION_BAN
+        severity: HIGH
+        law_article: "Art. 14"
+        business_description: >
+          É proibido coletar, armazenar ou usar dados pessoais de menores
+          para publicidade comportamental ou direcionada.
+        technical_description: >
+          Nenhuma função de tracking, analytics ou ad targeting deve
+          processar dados de usuários identificados como menores.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "track.*minor|analytics.*child|pixel.*under_age|ad_target.*teen"
+                description: "Tracking de menores para ads"
+              - pattern: "store_profile.*age.*minor|persist.*child.*preference"
+                description: "Persistência de perfil comportamental de menor"
+              - pattern: "facebook_pixel|google_tag.*minor|mixpanel.*child"
+                description: "SDK de analytics sem filtro de idade"
+          web_patterns:
+            forbidden_elements:
+              - selector: "script[src*='analytics'], script[src*='pixel'], script[src*='gtag']"
+                context: "Presente em páginas acessíveis por menores sem consentimento"
+        remediation:
+          business: "Desative todo tracking e analytics para usuários menores de 18 anos."
+          technical: "Implemente age-gate antes de carregar scripts de analytics. Use consent manager com filtro de idade."
+
+      - id: ECA.DATA.PARENTAL_CONSENT
+        severity: HIGH
+        law_article: "Art. 14, §1º"
+        business_description: >
+          Coleta de dados de crianças (até 12 anos) requer consentimento
+          específico de pelo menos um dos pais ou responsável legal.
+        technical_description: >
+          Antes de qualquer coleta de dados pessoais de usuários menores
+          de 12 anos, deve haver chamada a mecanismo de consentimento parental.
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "get_parental_consent|parental_approval|guardian_consent|parent_verify"
+                description: "Mecanismo de consentimento parental"
+        remediation:
+          business: "Implemente fluxo de consentimento parental verificável antes de coletar dados de crianças."
+          technical: "Adicione middleware que bloqueia coleta de dados até obter consentimento parental verificado."
+
+  - id: ECA.DESIGN
+    name: "Design Ético"
+    rules:
+      - id: ECA.DESIGN.LOOTBOX_BAN
+        severity: CRITICAL
+        law_article: "Art. 29"
+        business_description: >
+          Mecânicas de caixas de recompensa (loot boxes) são proibidas
+          em produtos acessíveis por menores.
+        technical_description: >
+          Funções que implementam recompensas aleatórias vinculadas
+          a compra devem ter age-gate bloqueante.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "loot_box|gacha|random_reward|mystery_box|surprise_pack|random_item.*purchase"
+                description: "Mecânica de loot box"
+            required_calls:
+              - pattern: "check_age|verify_age|age_gate"
+                description: "Age gate obrigatório antes de recompensa aleatória"
+        remediation:
+          business: "Remova mecânicas de loot box ou implemente verificação de idade bloqueante."
+          technical: "Adicione age-gate antes de qualquer função de recompensa aleatória."
+
+      - id: ECA.DESIGN.DARK_PATTERNS
+        severity: HIGH
+        law_article: "Art. 11"
+        business_description: >
+          Plataformas devem evitar mecanismos de uso compulsivo:
+          rolagem infinita, autoplay, notificações excessivas.
+        technical_description: >
+          Detecta implementações de infinite scroll, autoplay de vídeo,
+          e padrões de gamificação de engajamento.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "infinite_scroll|endless_feed|auto_play.*video|autoplay"
+                description: "Padrão de uso compulsivo"
+              - pattern: "streak_counter|daily_reward|engagement_score.*child"
+                description: "Gamificação de engajamento para menores"
+          web_patterns:
+            forbidden_elements:
+              - selector: "div[class*='infinite-scroll'], [data-infinite-scroll]"
+                description: "Rolagem infinita"
+              - selector: "video[autoplay], [data-autoplay='true']"
+                description: "Autoplay de vídeo"
+        remediation:
+          business: "Desative rolagem infinita e autoplay para usuários menores. Implemente limites de tempo."
+          technical: "Substitua infinite scroll por paginação. Remova atributo autoplay. Adicione time-limit controls."
+
+      - id: ECA.DESIGN.NOTIFICATIONS
+        severity: MEDIUM
+        business_description: >
+          Notificações direcionadas a menores devem ser limitadas
+          e permitir controle parental.
+        technical_description: >
+          Avisos do tipo Push, Modals intrusivos que forçam o retorno frequente
+          da criança ao aplicativo devem ser desabilitados em contas menores de idade.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "push_notification.*minor|notify.*child.*engage|nudge.*teen"
+                description: "Notificações de engajamento para menores"
+        remediation:
+          business: "Adicione políticas de limite de tempo ou horas corujas nas notificações push."
+          technical: "Filtre endpoints de Web Push Notification baseados na faixa etária do usuário solicitante."
+
+  - id: ECA.AD
+    name: "Publicidade"
+    rules:
+      - id: ECA.AD.TARGETED_BAN
+        severity: HIGH
+        business_description: >
+          É proibida publicidade direcionada a menores com base em
+          dados pessoais ou perfil comportamental.
+        technical_description: >
+          Serviços de ads não devem consumir sessões/perfilamento (targeted, behavioral, audience match).
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "target_ad.*minor|ad_segment.*teen|child.*marketing|behavioral_ad.*under"
+                description: "Segmentação publicitária de menores"
+        remediation:
+          business: "Sirva apenas anúncios genéricos ou por contexto não vinculados ao indivíduo (menor)."
+          technical: "Certifique-se de não carregar tags de Ad Targeting (ex: Google AdSense custom audiences) para users logados como menores."
+
+      - id: ECA.AD.PREDATORY_BAN
+        severity: HIGH
+        law_article: "Art. 23"
+        business_description: >
+          Proibida publicidade predatória, injusta ou enganosa
+          direcionada a menores.
+        technical_description: >
+          A lógica do negócio não pode utilizar contadores de urgência, pressão psicológica ou FOMO
+          em rotinas comerciais aplicáveis a crianças.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "urgency_timer.*child|limited_offer.*minor|fomo.*teen"
+                description: "Técnica de pressão publicitária para menores"
+        remediation:
+          business: "Limpe da UI contadores regressivos ameaçadores e mensagens apelativas."
+          technical: "Evite chamadas a timers regressivos vinculadas à visualização do menor de idade em páginas de loja."
+
+  - id: ECA.PARENTAL
+    name: "Supervisão Parental"
+    rules:
+      - id: ECA.PARENTAL.TOOLS
+        severity: HIGH
+        business_description: >
+          Plataformas devem disponibilizar ferramentas de controle
+          parental acessíveis e fáceis de usar.
+        technical_description: >
+          A aplicação deve expor endpoints ou telas específicas para guardiões limitarem features (gastos, horas).
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "parental_control|parent_dashboard|guardian_settings|family_link"
+                description: "Interface de controle parental"
+        remediation:
+          business: "Desenvolva painel de controle parental com limites de tempo e gastos."
+          technical: "Implemente dashboard de pais com endpoints de configuração de limites."
+
+  - id: ECA.CONTENT
+    name: "Moderação de Conteúdo"
+    rules:
+      - id: ECA.CONTENT.REMOVAL_24H
+        severity: CRITICAL
+        business_description: >
+          Conteúdo de exploração sexual, violência, drogas, bullying
+          deve ser removido em até 24h com notificação à ANPD.
+        technical_description: >
+          Gatilhos de moderação que notifiquem autoridades adequadas automaticamente ao lidar com material explícito infantil.
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "content_moderation|report_handler|moderation_queue|flag_content"
+                description: "Sistema de moderação"
+              - pattern: "notify_anpd|report_authority|anpd_notification"
+                description: "Notificação à ANPD"
+        remediation:
+          business: "Implemente sistema de moderação com SLA de 24h e canal de notificação à ANPD."
+          technical: "Crie fila de moderação com webhook para ANPD e cron de verificação de SLA."
+
+  - id: ECA.PRIVACY
+    name: "Privacidade por Design"
+    rules:
+      - id: ECA.PRIVACY.MAX_DEFAULT
+        severity: HIGH
+        business_description: >
+          Configurações de privacidade devem estar no nível máximo
+          por padrão para menores.
+        technical_description: >
+          O sistema não deve inicializar configurações de perfil infantil em formato público.
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "default_privacy_max|privacy.*strict|private_by_default"
+                description: "Privacidade máxima como padrão"
+            forbidden_patterns:
+              - pattern: "privacy.*public.*default|default.*visible|share_by_default"
+                description: "Padrão de privacidade aberto"
+        remediation:
+          business: "Altere os formulários de cadastro e banco de dados para defaults privados em caso de menores."
+          technical: "Assinale flags padrão de privacidade para nível restrito nas controllers de on-boarding."
+
+  - id: ECA.ANPD
+    name: "Orientações ANPD"
+    rules:
+      - id: ECA.ANPD.SECONDARY_USE_BAN
+        severity: CRITICAL
+        business_description: >
+          Dados coletados exclusivamente para a verificação de idade (Age-Gate) não podem ser
+          reutilizados para fins secundários (como marketing ou IA).
+        technical_description: >
+          A garantia de que o ID/Biometria checada durante a verificação de idade é descartado imediatamente
+          e não entra em fluxos de telemetria paralelos.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "train.*ai.*age_data|analytics.*push.*age_verify|save.*age.*for.*ads"
+                description: "Compartilhamento de dados do Age-Gate para uso secundário"
+        remediation:
+          business: "Nunca envie os dados da validação de idade para o seu banco de marketing ou treine IA com eles."
+          technical: "Assegure-se de consumir os webhooks de Identity Prover (ZKP) isolados de streams analíticos ou logs permanentes."
+
+      - id: ECA.ANPD.NO_TRACKING_VIA_VERIFICATION
+        severity: CRITICAL
+        business_description: >
+          Mecanismos de verificação não podem embutir recursos de rastreamento do dispositivo
+          ou sessão permanente associando a criança sem o claro consentimento legal.
+        technical_description: >
+          Restrições de fingerprinting de dispositivo atrelados as requisições de checagem.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "fingerprint.*age_gate|track.*device.*age"
+                description: "Fingerprint atrelado ao verificador de idade"
+        remediation:
+          business: "As provas de checagem devem ser dissociadas dos identificadores contínuos do dispositivo dos usuários (fingerprint)."
+          technical: "Remova telemetrias estritas de hardwares ou IPs que são cacheadas em correlação com a API de Idade."
+
+      - id: ECA.ANPD.NO_MASS_SURVEILLANCE
+        severity: HIGH
+        business_description: >
+          Soluções de checagem biométrica/camera para confirmar a idade não devem
+          realizar captura massiva ou contínua na aplicação que viole o princípio da necessidade.
+        technical_description: >
+          A aplicação não deve acessar o SDK da câmera continuamente após ou fora do Age Gate.
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "continuous.*camera|always.*on.*facial"
+                description: "Câmera ativada ininterruptamente"
+        remediation:
+          business: "Se a checagem de idade for facial/biométrica, feche os canais tão logo a prova seja concluída."
+          technical: "Garanta chamadas do tipo `stopCamera()`, `closeStream()` ou que a stream de midia seja interrompida (unmounted)."

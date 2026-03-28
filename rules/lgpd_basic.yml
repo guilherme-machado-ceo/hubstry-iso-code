@@ -1,0 +1,45 @@
+jurisdiction: LGPD
+law_reference: "Lei 13.709/2018"
+
+categories:
+  - id: LGPD.CONSENT
+    name: "Consentimento"
+    rules:
+      - id: LGPD.CONSENT.REQUIRED
+        severity: HIGH
+        business_description: "Coleta de dados requer base legal ou consentimento."
+        technical_description: "Rotinas que gravam PII devem checar status do consent manager."
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "get_consent|obtain_consent|consent_manager"
+        remediation:
+          business: "Implemente consentimento antes de coletar dados pessoais."
+          technical: "Adicione consent manager antes de chamadas de coleta."
+
+  - id: LGPD.DATA
+    name: "Tratamento de Dados"
+    rules:
+      - id: LGPD.DATA.MINIMIZATION
+        severity: MEDIUM
+        business_description: "Colete apenas dados estritamente necessários."
+        technical_description: "Evite métodos genéricos que copiam todos os headers ou states para armazenamento."
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "collect_all|store_everything|persist_all_data"
+        remediation:
+          business: "Faça auditoria nos dados guardados para limitar apenas aos usados em produção."
+          technical: "Filtre objetos salvando apenas IDs e métricas pontuais necessárias antes de gravar no banco de dados."
+
+      - id: LGPD.DATA.RETENTION
+        severity: MEDIUM
+        business_description: "Dados pessoais devem ter prazo de retenção definido."
+        technical_description: "O banco de dados ou as chamadas de salvamento precisam expirar de acordo com regras de retenção (TTL)."
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "set_retention|retention_policy|data_expiry|ttl_set"
+        remediation:
+          business: "Adote a expiração automática de dados ou exclusões lógicas anuais."
+          technical: "Implemente TTL nos registros inseridos que identifiquem a política de retenção atrelada ao usuário."
