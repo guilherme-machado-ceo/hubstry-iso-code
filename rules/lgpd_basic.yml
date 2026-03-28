@@ -1,0 +1,36 @@
+jurisdiction: LGPD
+law_reference: "Lei 13.709/2018"
+
+categories:
+  - id: LGPD.CONSENT
+    name: "Consentimento"
+    rules:
+      - id: LGPD.CONSENT.REQUIRED
+        severity: HIGH
+        business_description: "Coleta de dados requer base legal ou consentimento."
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "get_consent|obtain_consent|consent_manager"
+        remediation:
+          business: "Implemente consentimento antes de coletar dados pessoais."
+          technical: "Adicione consent manager antes de chamadas de coleta."
+
+  - id: LGPD.DATA
+    name: "Tratamento de Dados"
+    rules:
+      - id: LGPD.DATA.MINIMIZATION
+        severity: MEDIUM
+        business_description: "Colete apenas dados estritamente necessários."
+        detection:
+          code_patterns:
+            forbidden_patterns:
+              - pattern: "collect_all|store_everything|persist_all_data"
+
+      - id: LGPD.DATA.RETENTION
+        severity: MEDIUM
+        business_description: "Dados pessoais devem ter prazo de retenção definido."
+        detection:
+          code_patterns:
+            required_calls:
+              - pattern: "set_retention|retention_policy|data_expiry|ttl_set"
