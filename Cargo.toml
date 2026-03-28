@@ -1,69 +1,25 @@
 
 [package]
 name = "hubstry_iso_code"
-version = "0.2.0"
+version = "0.1.0"
 edition = "2021"
 authors = ["Guilherme Gonçalves Machado <guilherme.ceo@hubstry.com>"]
 license = "Apache-2.0"
-description = "Hubstry CaaS — Motor de compliance ECA Digital para código e web"
-homepage = "https://github.com/guilherme-machado-ceo/hubstry-iso-code"
-repository = "https://github.com/guilherme-machado-ceo/hubstry-iso-code"
+description = "A framework for integrating international compliance, security, quality, and ethical standards directly into the software development workflow."
+homepage = "https://github.com/Hubstry/hubstry-iso-code"
+repository = "https://github.com/Hubstry/hubstry-iso-code"
 keywords = ["compliance", "security", "iso", "framework", "rust"]
 categories = ["development-tools", "compilers", "parsing"]
 
 [dependencies]
-# Parsing multi-linguagem
-tree-sitter = "0.24"
-tree-sitter-rust = "0.23"
-tree-sitter-javascript = "0.23"
-tree-sitter-typescript = "0.23"
-tree-sitter-python = "0.23"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1.0"
+thiserror = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+serde_yaml = "0.9"
 syn = { version = "2.0", features = ["full", "visit"] }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
-
-# API REST
-axum = { version = "0.7", features = ["json", "multipart"] }
-tokio = { version = "1", features = ["full"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace", "limit"] }
-async-trait = "0.1"
-
-# Web scanning
-reqwest = { version = "0.12", features = ["json", "cookies", "rustls-tls"] }
-scraper = "0.20"
-url = "2"
-
-# Configuração e serialização
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-serde_yaml = "0.9"
-
-# Templates e relatórios
-tera = "1"
-base64 = "0.22"
-
-# CLI
-clap = { version = "4", features = ["derive"] }
-
-# Utilidades
-regex = "1"
-chrono = { version = "0.4", features = ["serde"] }
-anyhow = "1"
-thiserror = "2"
-uuid = { version = "1", features = ["v4", "serde"] }
-sha2 = "0.10"
-
-# Logging
-tracing = "0.1"
-tracing-subscriber = "0.3"
-
-# Terminal output
-colored = "2"
-indicatif = "0.17"
-
-[dev-dependencies]
-assert_cmd = "2"
-predicates = "3"
-tempfile = "3"
-wiremock = "0.6"
+# Add dependencies here as the Rust engine is developed
 
