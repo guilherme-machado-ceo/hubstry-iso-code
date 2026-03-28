@@ -5,15 +5,77 @@ jurisdictions:
     - prefix: "ECA.AGE.VERIFY"
       description: "Verificação de idade para acesso a conteúdo restrito."
       standard: "Eca" # Este campo deve corresponder a um enum `ComplianceStandard`
+      expected_calls:
+        - "verify_age"
+        - "check_age"
+        - "serpro_datavalid.verify_age"
     - prefix: "ECA.PARENT.CONSENT"
       description: "Mecanismo para obter consentimento parental para tratamento de dados de menores."
       standard: "Eca"
+      expected_calls:
+        - "get_parental_consent"
+        - "parent_ok"
+        - "authorization"
+        - "permission"
+        - "consent"
+      data_collection_keywords:
+        - "collect"
+        - "save"
+        - "store"
+        - "get_data"
+        - "user_profile"
     - prefix: "ECA.LOOTBOX.BLOCK"
       description: "Bloqueio ou restrição de mecânicas de loot box para menores."
       standard: "Eca"
+      expected_calls:
+        - "verify_age"
+        - "check_age"
+        - "serpro_datavalid.verify_age"
+      data_collection_keywords:
+        - "lootbox"
+        - "crate"
+        - "pack"
+        - "random_reward"
+        - "gacha"
+        - "open_box"
     - prefix: "ECA.DATA.MINIMIZE"
       description: "Minimização da coleta de dados de crianças e adolescentes."
       standard: "Eca"
     - prefix: "ECA.REPORT.CHANNEL"
       description: "Canal de denúncias de fácil acesso para conteúdo ilegal ou prejudicial."
       standard: "Eca"
+    - prefix: "ECA.AD.NO_RETENTION"
+      description: "Proibição de retenção de dados para publicidade."
+      standard: "Eca"
+      expected_calls:
+        - "disable_ad_tracking"
+        - "prevent_data_retention"
+      data_collection_keywords:
+        - "ad_retention"
+        - "store_ad_data"
+        - "save_analytics"
+    - prefix: "ECA.AD.NO_TARGETING"
+      description: "Proibição de publicidade direcionada."
+      standard: "Eca"
+      expected_calls:
+        - "disable_targeted_ads"
+        - "serve_generic_ads"
+      data_collection_keywords:
+        - "target_ad"
+        - "personalized_ad"
+        - "user_interests"
+  LGPD:
+    - prefix: "LGPD.DATA.COLLECTION"
+      description: "Auditoria de coleta de dados pessoais (LGPD)."
+      standard: "Lgpd"
+      data_collection_keywords:
+        - "collect_personal_data"
+        - "save_user_info"
+      expected_calls:
+        - "anonymize_data"
+    - prefix: "LGPD.CONSENT.REQUIRED"
+      description: "Verificação de consentimento explícito do titular."
+      standard: "Lgpd"
+      expected_calls:
+        - "check_user_consent"
+        - "require_opt_in"

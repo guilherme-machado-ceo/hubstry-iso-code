@@ -5,10 +5,11 @@
 // - Implementing the ISO Context Engine for compliance rule application.
 // - Defining interfaces for target compilers (Python, JS, Java).
 
-pub mod parser;
-pub mod semantic_engine;
+pub mod ast;
 pub mod models;
+pub mod parser;
 pub mod prefix_manager;
+pub mod semantic_engine;
 
 // Módulos de Jurisdição
 pub mod jurisdictions;
@@ -17,7 +18,8 @@ pub mod jurisdictions;
 
 // Example function (will be replaced by actual implementation)
 pub fn process_iso_code(code: &str) -> String {
-    format!("Processing ISO Code: {}\n(This is a placeholder function)", code)
+    format!(
+        "Processing ISO Code: {}\n(This is a placeholder function)",
+        code
+    )
 }
-
-

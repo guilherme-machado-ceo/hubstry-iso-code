@@ -12,6 +12,10 @@ pub struct PrefixInfo {
     pub prefix: String,
     pub description: String,
     pub standard: String,
+    #[serde(default)]
+    pub expected_calls: Vec<String>,
+    #[serde(default)]
+    pub data_collection_keywords: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -30,7 +34,9 @@ impl fmt::Display for PrefixError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PrefixError::Io(e) => write!(f, "Falha de I/O ao ler 'prefixes.yml': {}", e),
-            PrefixError::Parse(e) => write!(f, "Falha ao analisar o conteúdo de 'prefixes.yml': {}", e),
+            PrefixError::Parse(e) => {
+                write!(f, "Falha ao analisar o conteúdo de 'prefixes.yml': {}", e)
+            }
         }
     }
 }
@@ -57,8 +63,7 @@ pub fn try_get_prefix_map() -> Result<&'static HashMap<String, PrefixInfo>, Pref
 
     // Se não estiver inicializado, executa a lógica de inicialização.
     let file_content = fs::read_to_string("prefixes.yml").map_err(PrefixError::Io)?;
-    let config: Jurisdictions =
-        serde_yaml::from_str(&file_content).map_err(PrefixError::Parse)?;
+    let config: Jurisdictions = serde_yaml::from_str(&file_content).map_err(PrefixError::Parse)?;
 
     let mut map = HashMap::new();
     for (_, prefixes) in config.jurisdictions {

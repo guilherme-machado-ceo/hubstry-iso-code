@@ -39,32 +39,27 @@ fn main() {
     println!("--- Analisando Cenário 1: Violação ---");
     // O parsing agora é feito com `syn`
     match syn::parse_file(code_without_verification) {
-        Ok(ast) => {
-            match engine.analyze(&ast) {
-                Ok(results) => print_analysis_results(&results),
-                Err(e) => {
-                    eprintln!("Erro durante a análise: {}", e);
-                    eprintln!("Verifique se 'prefixes.yml' está presente e correto.");
-                }
+        Ok(ast) => match engine.analyze(&ast) {
+            Ok(results) => print_analysis_results(&results),
+            Err(e) => {
+                eprintln!("Erro durante a análise: {}", e);
+                eprintln!("Verifique se 'prefixes.yml' está presente e correto.");
             }
-        }
+        },
         Err(e) => {
             println!("Falha ao parsear o código de exemplo 1: {}", e);
         }
     }
 
-
     println!("\n--- Analisando Cenário 2: Conformidade ---");
     match syn::parse_file(code_with_verification) {
-        Ok(ast) => {
-            match engine.analyze(&ast) {
-                Ok(results) => print_analysis_results(&results),
-                Err(e) => {
-                    eprintln!("Erro durante a análise: {}", e);
-                    eprintln!("Verifique se 'prefixes.yml' está presente e correto.");
-                }
+        Ok(ast) => match engine.analyze(&ast) {
+            Ok(results) => print_analysis_results(&results),
+            Err(e) => {
+                eprintln!("Erro durante a análise: {}", e);
+                eprintln!("Verifique se 'prefixes.yml' está presente e correto.");
             }
-        }
+        },
         Err(e) => {
             println!("Falha ao parsear o código de exemplo 2: {}", e);
         }

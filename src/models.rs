@@ -9,6 +9,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub enum Jurisdiction {
     Eca,
+    Lgpd,
     Generic,
 }
 
@@ -24,7 +25,7 @@ pub struct ComplianceRule {
 }
 
 /// Severity levels for compliance rules
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum RuleSeverity {
     Critical,
     High,
@@ -42,8 +43,10 @@ pub struct ComplianceContext {
     pub parameters: HashMap<String, String>,
 }
 
+use serde::Serialize;
+
 /// Represents a compliance violation found during analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComplianceViolation {
     pub rule_id: String,
     pub severity: RuleSeverity,
@@ -76,13 +79,14 @@ impl fmt::Display for Jurisdiction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Jurisdiction::Eca => write!(f, "ECA Digital"),
+            Jurisdiction::Lgpd => write!(f, "LGPD"),
             Jurisdiction::Generic => write!(f, "Generic"),
         }
     }
 }
 
 /// Represents the result of a semantic analysis.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AnalysisResult {
     pub compliance_score: f64,
     pub violations: Vec<ComplianceViolation>,
@@ -106,7 +110,7 @@ impl fmt::Display for RuleSeverity {
 impl Default for EngineConfig {
     fn default() -> Self {
         Self {
-            enabled_jurisdictions: vec![Jurisdiction::Eca],
+            enabled_jurisdictions: vec![Jurisdiction::Eca, Jurisdiction::Lgpd],
             strict_mode: false,
             output_format: OutputFormat::Json,
             custom_rules: Vec::new(),
