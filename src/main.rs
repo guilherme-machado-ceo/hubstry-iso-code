@@ -1,94 +1,160 @@
 // src/main.rs
 
-use clap::Parser;
-use hubstry_iso_code::{models::EngineConfig, semantic_engine::SemanticEngine};
+use clap::{Parser, Subcommand};
+use hubstry_iso_code::{models::EngineConfig, semantic_engine::SemanticEngine, scanner};
 use std::fs;
 use std::path::PathBuf;
 
-/// Hubstry-ISO-Code: Um framework para análise de conformidade de código.
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[derive(Parser)]
+#[command(name = "hubstry")]
+#[command(about = "Hubstry CaaS — Compliance as a Service")]
 struct Cli {
-    /// O caminho para o arquivo Rust a ser analisado.
-    #[arg(short, long)]
-    file: PathBuf,
-
-    /// O limiar mínimo de score de compliance (0 a 100) para sucesso do processo.
-    #[arg(short, long, default_value_t = 90.0)]
-    threshold: f64,
+    #[command(subcommand)]
+    command: Commands,
 }
 
-fn main() -> std::io::Result<()> {
+#[derive(Subcommand)]
+enum Commands {
+    /// Analisar código-fonte localmente
+    Analyze {
+        #[arg(short, long)]
+        file: Option<String>,
+        #[arg(short, long)]
+        dir: Option<String>,
+        #[arg(short, long, default_value = "auto")]
+        lang: String,
+        #[arg(short, long, default_value = "rules/eca_digital.yml")]
+        rules: String,
+        #[arg(long, default_value = "terminal")]
+        format: String,
+        #[arg(short, long)]
+        output: Option<String>,
+        #[arg(short, long, default_value_t = 90.0)]
+        threshold: f64,
+    },
+    /// Escanear URL de website
+    Scan {
+        #[arg(short, long)]
+        url: String,
+        #[arg(short, long, default_value = "rules/eca_digital.yml")]
+        rules: String,
+        #[arg(long, default_value = "html")]
+        format: String,
+        #[arg(short, long)]
+        output: Option<String>,
+    },
+    /// Escanear rapidamente a URL
+    QuickScan {
+        #[arg(short, long)]
+        url: String,
+    },
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    match cli.command {
+        Commands::Analyze { file, dir: _, lang: _, rules: _, format: _, output: _, threshold } => {
+            let file_path = file.unwrap_or_else(|| "src/main.rs".to_string());
+            let path = PathBuf::from(file_path);
 
-    println!("🔎 Analisando o arquivo: {}", cli.file.display());
+            println!("🔎 Analisando o arquivo: {}", path.display());
 
-    // 1. Ler o conteúdo do arquivo
-    let content = match fs::read_to_string(&cli.file) {
-        Ok(content) => content,
-        Err(e) => {
-            eprintln!(
-                "Erro: Não foi possível ler o arquivo '{}'.",
-                cli.file.display()
-            );
-            eprintln!("Detalhes: {}", e);
-            return Err(e);
+            let content = fs::read_to_string(&path)?;
+            let ast = syn::parse_file(&content)?;
+
+            let engine = SemanticEngine::new(EngineConfig::default());
+            let results = engine.analyze(&ast)?;
+
+            let report = engine.generate_report(&results);
+            println!("\n{}", report);
+
+            let json_report = engine.generate_json_report(&results);
+            let _ = fs::write("compliance_report.json", json_report);
+
+            let html_report = engine.generate_html_report(&results);
+            let _ = fs::write("compliance_report.html", html_report);
+
+            if results.compliance_score < threshold {
+                eprintln!(
+                    "❌ Falha de Compliance: O score de {:.1}% está abaixo do limite mínimo de {:.1}%!",
+                    results.compliance_score, threshold
+                );
+                std::process::exit(1);
+            }
         }
-    };
+        Commands::Scan { url, rules: _, format: _, output: _ } => {
+            println!("Iniciando Web Scan para URL: {}", url);
+            let html = if url.starts_with("http") {
+                 let client = reqwest::Client::builder()
+                     .timeout(std::time::Duration::from_secs(30))
+                     .build()?;
+                 let res = client.get(&url).send().await?;
+                 res.text().await?
+            } else {
+                 fs::read_to_string(&url)?
+            };
 
-    // 2. Parsear o conteúdo para uma AST `syn`
-    let ast = match syn::parse_file(&content) {
-        Ok(ast) => ast,
-        Err(e) => {
-            eprintln!(
-                "Erro: Falha ao parsear o código Rust no arquivo '{}'.",
-                cli.file.display()
-            );
-            eprintln!("Certifique-se de que o arquivo contém código Rust válido.");
-            eprintln!("Detalhes do parser: {}", e);
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Falha no parsing do código",
-            ));
+            use scanner::WebScanner;
+            let dom_scanner = scanner::StaticDomScanner::new();
+            let config = scanner::ScanConfig {
+                 max_pages: 1,
+                 follow_links: false,
+                 check_subpages: vec![],
+                 rules_path: "".to_string(),
+            };
+
+            println!("Html length: {} bytes", html.len());
+
+            let res = dom_scanner.scan(&url, &config).await?;
+            println!("{}", serde_json::to_string_pretty(&res)?);
+
+            println!("Detailed scanner analysis complete.");
         }
-    };
+        Commands::QuickScan { url } => {
+             println!("Iniciando Quick Scan para URL: {}", url);
 
-    // 3. Executar o motor semântico
-    let engine = SemanticEngine::new(EngineConfig::default());
-    let results = match engine.analyze(&ast) {
-        Ok(results) => results,
-        Err(e) => {
-            eprintln!("\nErro Crítico: Falha ao inicializar o motor de análise.");
-            eprintln!("Causa: {}", e);
-            eprintln!("Por favor, verifique se o arquivo 'prefixes.yml' existe no diretório raiz e está formatado corretamente.");
-            return Err(std::io::Error::other(
-                "Falha na configuração do motor semântico",
-            ));
+             let res = if url.starts_with("http") {
+                 scanner::quick_scan(&url).await?
+             } else {
+                 let html = fs::read_to_string(&url)?;
+                 let age_gate_result = scanner::age_gate_detector::detect_age_gate(&html);
+
+                 let has_age_verification = age_gate_result.method != scanner::age_gate_detector::AgeVerificationMethod::None;
+                 let verification_method = format!("{:?}", age_gate_result.method);
+
+                 let risk_level = match age_gate_result.method {
+                     scanner::age_gate_detector::AgeVerificationMethod::SelfDeclarationOnly => "CRITICAL",
+                     scanner::age_gate_detector::AgeVerificationMethod::None => "CRITICAL",
+                     _ => "OK",
+                 };
+
+                 let (summary, recommendation) = match age_gate_result.method {
+                     scanner::age_gate_detector::AgeVerificationMethod::SelfDeclarationOnly => (
+                         "Detectada autodeclaração de idade na página.".to_string(),
+                         "A autodeclaração é proibida pelo ECA Digital. Substitua por verificação oficial via API (Serpro/Gov.br).".to_string()
+                     ),
+                     scanner::age_gate_detector::AgeVerificationMethod::None => (
+                         "Nenhum bloqueio ou verificação de idade foi encontrado.".to_string(),
+                         "Implemente um Age-Gate na entrada da aplicação ou em fluxos de acesso sensíveis.".to_string()
+                     ),
+                     _ => (
+                         "Métodos de verificação oficiais detectados (API/ZKP).".to_string(),
+                         "A verificação está em conformidade. Continue garantindo a proteção aos menores.".to_string()
+                     ),
+                 };
+                 scanner::QuickScanResult {
+                     url,
+                     has_age_verification,
+                     verification_method,
+                     risk_level: risk_level.to_string(),
+                     summary,
+                     recommendation,
+                 }
+             };
+             println!("Resumo da Avaliação Rápida:");
+             println!("{}", serde_json::to_string_pretty(&res)?);
         }
-    };
-
-    // 4. Gerar e imprimir o relatório
-    let report = engine.generate_report(&results);
-    println!("\n{}", report);
-
-    // Output JSON and HTML as well to files
-    let json_report = engine.generate_json_report(&results);
-    if let Err(e) = fs::write("compliance_report.json", json_report) {
-        eprintln!("Warning: Failed to write JSON report: {}", e);
-    }
-
-    let html_report = engine.generate_html_report(&results);
-    if let Err(e) = fs::write("compliance_report.html", html_report) {
-        eprintln!("Warning: Failed to write HTML report: {}", e);
-    }
-
-    // 5. Exit with an error if the compliance score is below the threshold or critical violations are found
-    if results.compliance_score < cli.threshold {
-        eprintln!(
-            "❌ Falha de Compliance: O score de {:.1}% está abaixo do limite mínimo de {:.1}%!",
-            results.compliance_score, cli.threshold
-        );
-        std::process::exit(1);
     }
 
     Ok(())

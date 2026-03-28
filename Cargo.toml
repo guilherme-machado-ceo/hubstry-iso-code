@@ -21,5 +21,16 @@ clap = { version = "4.0", features = ["derive"] }
 serde_yaml = "0.9"
 syn = { version = "2.0", features = ["full", "visit"] }
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
+
+# Web scanning
+reqwest = { version = "0.12", features = ["json", "cookies", "rustls-tls"] }
+scraper = "0.20"
+url = "2"
+async-trait = "0.1"
+
+# CLI additions
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+
 # Add dependencies here as the Rust engine is developed
 
