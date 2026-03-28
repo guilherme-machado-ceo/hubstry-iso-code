@@ -15,7 +15,13 @@ pub fn detect_lootbox(html: &str) -> LootboxResult {
     for el in document.select(&script_selector) {
         let script_content = el.text().collect::<Vec<_>>().join(" ").to_lowercase();
 
-        let target_terms = ["lootbox", "loot_box", "gacha", "mystery_box", "random_reward"];
+        let target_terms = [
+            "lootbox",
+            "loot_box",
+            "gacha",
+            "mystery_box",
+            "random_reward",
+        ];
         for term in target_terms {
             if script_content.contains(term) {
                 has_lootbox = true;
