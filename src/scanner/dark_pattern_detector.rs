@@ -31,7 +31,10 @@ pub fn detect_dark_patterns(html: &str) -> DarkPatternResult {
             name_lower.contains("infinite-scroll") || name_lower.contains("endless-feed")
         });
 
-        if classes_lower.contains("infinite-scroll") || classes_lower.contains("endless-feed") || has_infinite_scroll_attr {
+        if classes_lower.contains("infinite-scroll")
+            || classes_lower.contains("endless-feed")
+            || has_infinite_scroll_attr
+        {
             has_dark_patterns = true;
             elements_found.push("Rolagem Infinita (Infinite Scroll) detectada".to_string());
         }

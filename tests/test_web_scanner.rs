@@ -1,13 +1,20 @@
 #[cfg(test)]
 mod tests {
-    use hubstry_iso_code::scanner::{age_gate_detector, dark_pattern_detector, ad_tracker_detector, privacy_policy_checker, lootbox_detector};
+    use hubstry_iso_code::scanner::{
+        ad_tracker_detector, age_gate_detector, dark_pattern_detector, lootbox_detector,
+        privacy_policy_checker,
+    };
 
     #[test]
     fn test_non_compliant_site() {
-        let html = std::fs::read_to_string("examples/web/non_compliant_site.html").expect("Failed to read example");
+        let html = std::fs::read_to_string("examples/web/non_compliant_site.html")
+            .expect("Failed to read example");
 
         let age_gate_result = age_gate_detector::detect_age_gate(&html);
-        assert_eq!(age_gate_result.method, age_gate_detector::AgeVerificationMethod::SelfDeclarationOnly);
+        assert_eq!(
+            age_gate_result.method,
+            age_gate_detector::AgeVerificationMethod::SelfDeclarationOnly
+        );
         assert!(!age_gate_result.elements_found.is_empty());
 
         let dark_patterns_result = dark_pattern_detector::detect_dark_patterns(&html);
@@ -25,10 +32,14 @@ mod tests {
 
     #[test]
     fn test_compliant_site() {
-        let html = std::fs::read_to_string("examples/web/compliant_site.html").expect("Failed to read example");
+        let html = std::fs::read_to_string("examples/web/compliant_site.html")
+            .expect("Failed to read example");
 
         let age_gate_result = age_gate_detector::detect_age_gate(&html);
-        assert_eq!(age_gate_result.method, age_gate_detector::AgeVerificationMethod::GovernmentApi);
+        assert_eq!(
+            age_gate_result.method,
+            age_gate_detector::AgeVerificationMethod::GovernmentApi
+        );
 
         let dark_patterns_result = dark_pattern_detector::detect_dark_patterns(&html);
         assert!(!dark_patterns_result.has_dark_patterns);

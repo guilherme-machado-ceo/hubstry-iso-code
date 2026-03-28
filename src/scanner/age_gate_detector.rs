@@ -25,7 +25,10 @@ pub fn detect_age_gate(html: &str) -> AgeGateResult {
     for el in document.select(&checkbox_selector) {
         if let Some(name) = el.value().attr("name") {
             let name_lower = name.to_lowercase();
-            if name_lower.contains("age") || name_lower.contains("idade") || name_lower.contains("18") {
+            if name_lower.contains("age")
+                || name_lower.contains("idade")
+                || name_lower.contains("18")
+            {
                 method = AgeVerificationMethod::SelfDeclarationOnly;
                 elements_found.push(format!("Checkbox autodeclaração: {:?}", name));
             }
@@ -47,7 +50,10 @@ pub fn detect_age_gate(html: &str) -> AgeGateResult {
     for el in document.select(&button_selector) {
         let text_content: String = el.text().collect::<Vec<_>>().join(" ");
         let text_lower = text_content.to_lowercase();
-        if text_lower.contains("tenho 18") || text_lower.contains("sou maior") || text_lower.contains("i am 18+") {
+        if text_lower.contains("tenho 18")
+            || text_lower.contains("sou maior")
+            || text_lower.contains("i am 18+")
+        {
             method = AgeVerificationMethod::SelfDeclarationOnly;
             elements_found.push(format!("Botão autodeclaração: {:?}", text_content.trim()));
         }
@@ -58,10 +64,15 @@ pub fn detect_age_gate(html: &str) -> AgeGateResult {
     for el in document.select(&script_selector) {
         if let Some(src) = el.value().attr("src") {
             let src_lower = src.to_lowercase();
-            if src_lower.contains("gov.br") || src_lower.contains("serpro") || src_lower.contains("datavalid") {
+            if src_lower.contains("gov.br")
+                || src_lower.contains("serpro")
+                || src_lower.contains("datavalid")
+            {
                 method = AgeVerificationMethod::GovernmentApi;
                 elements_found.push(format!("API Governamental: {:?}", src));
-            } else if src_lower.contains("accounts.google.com") || src_lower.contains("identity.googleapis") {
+            } else if src_lower.contains("accounts.google.com")
+                || src_lower.contains("identity.googleapis")
+            {
                 method = AgeVerificationMethod::GoogleZkp;
                 elements_found.push(format!("API Google ZKP: {:?}", src));
             }

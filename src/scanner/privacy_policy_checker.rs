@@ -26,7 +26,12 @@ pub fn check_privacy_policy(html: &str) -> PrivacyPolicyResult {
 
     // Simplificação para MVP: Buscar menções diretas na página atual (ou no footer)
     // Para análise profunda, idealmente faríamos um fetch() na URL da política encontrada.
-    let body_text = document.root_element().text().collect::<Vec<_>>().join(" ").to_lowercase();
+    let body_text = document
+        .root_element()
+        .text()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
     if body_text.contains("menores")
         || body_text.contains("crianças")
         || body_text.contains("lgpd")

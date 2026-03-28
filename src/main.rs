@@ -1,7 +1,7 @@
 // src/main.rs
 
 use clap::{Parser, Subcommand};
-use hubstry_iso_code::{models::EngineConfig, semantic_engine::SemanticEngine, scanner};
+use hubstry_iso_code::{models::EngineConfig, scanner, semantic_engine::SemanticEngine};
 use std::fs;
 use std::path::PathBuf;
 
@@ -54,7 +54,15 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Analyze { file, dir: _, lang: _, rules: _, format: _, output: _, threshold } => {
+        Commands::Analyze {
+            file,
+            dir: _,
+            lang: _,
+            rules: _,
+            format: _,
+            output: _,
+            threshold,
+        } => {
             let file_path = file.unwrap_or_else(|| "src/main.rs".to_string());
             let path = PathBuf::from(file_path);
 
@@ -83,25 +91,30 @@ async fn main() -> anyhow::Result<()> {
                 std::process::exit(1);
             }
         }
-        Commands::Scan { url, rules: _, format: _, output: _ } => {
+        Commands::Scan {
+            url,
+            rules: _,
+            format: _,
+            output: _,
+        } => {
             println!("Iniciando Web Scan para URL: {}", url);
             let html = if url.starts_with("http") {
-                 let client = reqwest::Client::builder()
-                     .timeout(std::time::Duration::from_secs(30))
-                     .build()?;
-                 let res = client.get(&url).send().await?;
-                 res.text().await?
+                let client = reqwest::Client::builder()
+                    .timeout(std::time::Duration::from_secs(30))
+                    .build()?;
+                let res = client.get(&url).send().await?;
+                res.text().await?
             } else {
-                 fs::read_to_string(&url)?
+                fs::read_to_string(&url)?
             };
 
             use scanner::WebScanner;
             let dom_scanner = scanner::StaticDomScanner::new();
             let config = scanner::ScanConfig {
-                 max_pages: 1,
-                 follow_links: false,
-                 check_subpages: vec![],
-                 rules_path: "".to_string(),
+                max_pages: 1,
+                follow_links: false,
+                check_subpages: vec![],
+                rules_path: "".to_string(),
             };
 
             println!("Html length: {} bytes", html.len());
@@ -112,24 +125,27 @@ async fn main() -> anyhow::Result<()> {
             println!("Detailed scanner analysis complete.");
         }
         Commands::QuickScan { url } => {
-             println!("Iniciando Quick Scan para URL: {}", url);
+            println!("Iniciando Quick Scan para URL: {}", url);
 
-             let res = if url.starts_with("http") {
-                 scanner::quick_scan(&url).await?
-             } else {
-                 let html = fs::read_to_string(&url)?;
-                 let age_gate_result = scanner::age_gate_detector::detect_age_gate(&html);
+            let res = if url.starts_with("http") {
+                scanner::quick_scan(&url).await?
+            } else {
+                let html = fs::read_to_string(&url)?;
+                let age_gate_result = scanner::age_gate_detector::detect_age_gate(&html);
 
-                 let has_age_verification = age_gate_result.method != scanner::age_gate_detector::AgeVerificationMethod::None;
-                 let verification_method = format!("{:?}", age_gate_result.method);
+                let has_age_verification = age_gate_result.method
+                    != scanner::age_gate_detector::AgeVerificationMethod::None;
+                let verification_method = format!("{:?}", age_gate_result.method);
 
-                 let risk_level = match age_gate_result.method {
-                     scanner::age_gate_detector::AgeVerificationMethod::SelfDeclarationOnly => "CRITICAL",
-                     scanner::age_gate_detector::AgeVerificationMethod::None => "CRITICAL",
-                     _ => "OK",
-                 };
+                let risk_level = match age_gate_result.method {
+                    scanner::age_gate_detector::AgeVerificationMethod::SelfDeclarationOnly => {
+                        "CRITICAL"
+                    }
+                    scanner::age_gate_detector::AgeVerificationMethod::None => "CRITICAL",
+                    _ => "OK",
+                };
 
-                 let (summary, recommendation) = match age_gate_result.method {
+                let (summary, recommendation) = match age_gate_result.method {
                      scanner::age_gate_detector::AgeVerificationMethod::SelfDeclarationOnly => (
                          "Detectada autodeclaração de idade na página.".to_string(),
                          "A autodeclaração é proibida pelo ECA Digital. Substitua por verificação oficial via API (Serpro/Gov.br).".to_string()
@@ -143,17 +159,17 @@ async fn main() -> anyhow::Result<()> {
                          "A verificação está em conformidade. Continue garantindo a proteção aos menores.".to_string()
                      ),
                  };
-                 scanner::QuickScanResult {
-                     url,
-                     has_age_verification,
-                     verification_method,
-                     risk_level: risk_level.to_string(),
-                     summary,
-                     recommendation,
-                 }
-             };
-             println!("Resumo da Avaliação Rápida:");
-             println!("{}", serde_json::to_string_pretty(&res)?);
+                scanner::QuickScanResult {
+                    url,
+                    has_age_verification,
+                    verification_method,
+                    risk_level: risk_level.to_string(),
+                    summary,
+                    recommendation,
+                }
+            };
+            println!("Resumo da Avaliação Rápida:");
+            println!("{}", serde_json::to_string_pretty(&res)?);
         }
     }
 
