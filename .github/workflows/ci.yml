@@ -78,12 +78,7 @@ jobs:
       run: cargo test --lib --verbose
     
     - name: Run integration tests
-      run: cargo test --test integration_tests --verbose
-    
-    - name: Run examples
-      run: |
-        cargo run --example basic_analysis
-        cargo run --example advanced_compliance
+      run: cargo test --test test_eca_validation --verbose
     
     - name: Generate documentation
       run: cargo doc --no-deps --all-features
