@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Site Não Conforme (Exemplo)</title>
+    <!-- Ad Tracker sem consentimento -->
+    <script src="https://www.google-analytics.com/analytics.js"></script>
+    <script>
+        // Lootbox terms in script
+        function openLootbox() {
+            let random_reward = Math.random();
+            console.log("Você ganhou: ", random_reward);
+        }
+    </script>
+    <style>
+        .infinite-scroll {
+            height: 2000px;
+            background: linear-gradient(to bottom, #ccc, #eee);
+        }
+    </style>
+</head>
+<body>
+    <h1>Bem-vindo ao nosso Jogo</h1>
+
+    <!-- Autodeclaração Simples -->
+    <label>
+        <input type="checkbox" name="age_confirmation"> Tenho 18 anos ou mais
+    </label>
+
+    <button onclick="openLootbox()">Comprar Mystery Box</button>
+
+    <!-- Vídeo autoplay -->
+    <video autoplay muted loop>
+        <source src="trailer.mp4" type="video/mp4">
+    </video>
+
+    <!-- Dark Pattern: Endless Feed -->
+    <div class="infinite-scroll">
+        Conteúdo infinito...
+    </div>
+</body>
+</html>

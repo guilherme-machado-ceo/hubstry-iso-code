@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Site Conforme (Exemplo)</title>
+    <!-- Age gate robusto via API -->
+    <script src="https://servicos.serpro.gov.br/datavalid/sdk.js"></script>
+</head>
+<body>
+    <h1>Bem-vindo ao nosso Jogo Seguro</h1>
+
+    <div id="age-verification">
+        <p>Por favor, autentique-se via Gov.br para confirmar sua idade.</p>
+        <button onclick="Datavalid.verifyAge()">Verificar Identidade</button>
+    </div>
+
+    <footer>
+        <a href="/politica-de-privacidade.html">Política de Privacidade (Atende LGPD e ECA)</a>
+    </footer>
+</body>
+</html>
