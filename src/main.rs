@@ -31,6 +31,8 @@ enum Commands {
         output: Option<String>,
         #[arg(short, long, default_value_t = 90.0)]
         threshold: f64,
+        #[arg(long)]
+        license_key: Option<String>,
     },
     /// Escanear URL de website
     Scan {
@@ -42,11 +44,15 @@ enum Commands {
         format: String,
         #[arg(short, long)]
         output: Option<String>,
+        #[arg(long)]
+        license_key: Option<String>,
     },
     /// Escanear rapidamente a URL
     QuickScan {
         #[arg(short, long)]
         url: String,
+        #[arg(long)]
+        license_key: Option<String>,
     },
 }
 
@@ -59,10 +65,20 @@ async fn main() -> anyhow::Result<()> {
             dir: _,
             lang: _,
             rules: _,
-            format: _,
+            format,
             output: _,
             threshold,
+            license_key,
         } => {
+            use hubstry_iso_code::licensing::tier_checker::{validate_license_key, Feature};
+            let tier = validate_license_key(license_key.as_deref());
+
+            let mut effective_format = format;
+            if effective_format == "html" && !tier.has_access(Feature::ReportHtml) {
+                println!("👋 Ops! Relatórios HTML avançados e multicamadas estão disponíveis a partir do plano Starter (R$197/mês). Assine para ativar!");
+                effective_format = "terminal".to_string();
+            }
+
             let file_path = file.unwrap_or_else(|| "src/main.rs".to_string());
             let path = PathBuf::from(file_path);
 
@@ -74,14 +90,20 @@ async fn main() -> anyhow::Result<()> {
             let engine = SemanticEngine::new(EngineConfig::default());
             let results = engine.analyze(&ast)?;
 
-            let report = engine.generate_report(&results);
-            println!("\n{}", report);
+            if effective_format == "terminal" {
+                let report = engine.generate_report(&results);
+                println!("\n{}", report);
+            }
 
-            let json_report = engine.generate_json_report(&results);
-            let _ = fs::write("compliance_report.json", json_report);
+            if tier.has_access(Feature::ReportJson) {
+                let json_report = engine.generate_json_report(&results);
+                let _ = fs::write("compliance_report.json", json_report);
+            }
 
-            let html_report = engine.generate_html_report(&results);
-            let _ = fs::write("compliance_report.html", html_report);
+            if tier.has_access(Feature::ReportHtml) {
+                let html_report = engine.generate_html_report(&results);
+                let _ = fs::write("compliance_report.html", html_report);
+            }
 
             if results.compliance_score < threshold {
                 eprintln!(
@@ -96,7 +118,15 @@ async fn main() -> anyhow::Result<()> {
             rules: _,
             format: _,
             output: _,
+            license_key,
         } => {
+            use hubstry_iso_code::licensing::tier_checker::{validate_license_key, Feature};
+            let tier = validate_license_key(license_key.as_deref());
+            if !tier.has_access(Feature::WebScanning) {
+                eprintln!("👋 Ops! O Web Scanning é uma funcionalidade disponível a partir do plano Pro (R$497/mês).");
+                std::process::exit(1);
+            }
+
             println!("Iniciando Web Scan para URL: {}", url);
             let html = if url.starts_with("http") {
                 let client = reqwest::Client::builder()
@@ -124,7 +154,10 @@ async fn main() -> anyhow::Result<()> {
 
             println!("Detailed scanner analysis complete.");
         }
-        Commands::QuickScan { url } => {
+        Commands::QuickScan {
+            url,
+            license_key: _,
+        } => {
             println!("Iniciando Quick Scan para URL: {}", url);
 
             let res = if url.starts_with("http") {

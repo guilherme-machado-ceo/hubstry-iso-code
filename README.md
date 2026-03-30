@@ -51,6 +51,14 @@ Para entender melhor como configurar suas políticas usando a nossa ferramenta d
 👉 [Como Usar e Interpretar (USAGE.md)](./USAGE.md)
 
 ## ⚖️ Licenciamento
-Hubstry CaaS trabalha sobre o modelo de assinatura *Compliance as a Service*. O código do motor central (PoC aberto) está sob licença Apache-2.0, no entanto o uso corporativo e de extensões avançadas (Premium/Enterprise) devem seguir um licenciamento em breve publicado.
+Hubstry CaaS trabalha sobre o modelo de assinatura Open-Core (*Compliance as a Service*).
+O código do motor central (PoC aberto) está sob licença Apache-2.0, no entanto o uso corporativo e extensões avançadas das APIs seguem a tabela comercial descrita detalhadamente em [LICENSE_COMMERCIAL.md](LICENSE_COMMERCIAL.md):
+
+| Feature | Community | Starter (R$197/mês) | Pro (R$497/mês) | Enterprise |
+|---|:---:|:---:|:---:|:---:|
+| Análise de Código | ✅ | ✅ | ✅ | ✅ |
+| Relatório no Terminal | ✅ | ✅ | ✅ | ✅ |
+| Relatórios HTML / PDF | ❌ | ✅ | ✅ | ✅ |
+| Web Scanning (DOM / APIs) | ❌ | ❌ | ✅ | ✅ |
 
 *(MVP: Construído para adequação do ECA Digital e demonstração de flexibilidade com LGPD).*

@@ -32,5 +32,9 @@ async-trait = "0.1"
 tokio = { version = "1", features = ["full"] }
 anyhow = "1.0"
 
+# Licensing
+sha2 = "0.10"
+hex = "0.4"
+
 # Add dependencies here as the Rust engine is developed
 

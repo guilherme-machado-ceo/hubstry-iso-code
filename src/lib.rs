@@ -14,6 +14,7 @@ pub mod semantic_engine;
 // Módulos de Jurisdição
 pub mod jurisdictions;
 
+pub mod licensing;
 pub mod scanner;
 
 // Módulos de governança e segurança (removidos para focar no escopo atual)
